@@ -1,4 +1,4 @@
-# ◉ OpenAtlas
+  # ◉ OpenAtlas
 
 **OpenAtlas** is an AI-powered Global Ontology Engine that transforms raw, fragmented news data into a structured, interactive Knowledge Graph. It provides geopolitical analysts and researchers with a "macroscope" to visualize the hidden connections between world events.
 
