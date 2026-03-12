@@ -1,0 +1,818 @@
+[
+  {
+    "id": "6e068955-2bbc-485a-8374-5978cf1939ef",
+    "prev": [],
+    "next": [
+      "4eed7644-bfb4-4bbe-985e-45a4c9f0641c",
+      "1bcf3400-a795-41ec-8010-29c0f183f5e2",
+      "15811209-76c2-4b33-95c9-421919d29b5a",
+      "8ffdf1ea-0c19-42a4-b3b6-bb3b767b38d7",
+      "cfd7893b-523f-41f0-85e4-381b22b5bdf8"
+    ],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "The US-Israel war on Iran has escalated significantly, leading to a global oil crisis with oil tankers targeted in the Gulf and near Iraq, resulting in Iran's effective closure of the Strait of Hormuz and the \"largest oil disruption in history\" with surging prices. This conflict has also triggered warnings of a global food crisis due to escalating energy and fertilizer costs, while exposing vulnerabilities in the Gulf's water infrastructure. Iran's new Supreme Leader, Mojtaba Khamenei, has issued a defiant statement vowing retaliation and insisting on keeping the Strait of Hormuz closed, following the death of the previous Supreme Leader Ayatollah Ali Khamenei in US-Israeli strikes. Attacks have been reported on targets in Israel (Tel Aviv suburbs), Lebanon (Beirut), and civilian infrastructure in Dubai and Kuwait, with the US investigating a strike on an Iranian school that killed 165 people. The war is reshaping global travel, energy, trade, and diplomatic alliances, causing widespread economic and societal impacts, including an LPG shortage in India. While Iran's retaliatory strikes appear to be slowing, Washington is tracking the possibility of Iranian \"sleeper cells\" on US soil. Joe Rogan has publicly criticized President Trump's handling of the war, and Russia and China are signaling concerns about potential broader involvement, with Russia reportedly providing sensitive intelligence to Iran. The conflict is also causing domestic political problems for Italy's Prime Minister Giorgia Meloni and Ireland's Deputy PM has warned of a \"near-existential moment\" for the EU.",
+    "key_elements": [
+      "us",
+      "israel",
+      "iran",
+      "war",
+      "middle east",
+      "strait of hormuz",
+      "oil crisis",
+      "energy crisis",
+      "global economy",
+      "food crisis",
+      "fertilizer",
+      "gas prices",
+      "donald trump",
+      "mojtaba khamenei",
+      "ayatollah ali khamenei",
+      "hezbollah",
+      "russia",
+      "china",
+      "dubai",
+      "kuwait",
+      "iraq",
+      "lebanon",
+      "tel aviv",
+      "india",
+      "lpg",
+      "water infrastructure",
+      "desalination",
+      "diplomacy",
+      "geopolitics",
+      "military strikes",
+      "society",
+      "italy",
+      "giorgia meloni",
+      "european union",
+      "ireland",
+      "joe rogan",
+      "world war 3",
+      "sleeper cells",
+      "intelligence sharing"
+    ],
+    "domain": "geopolitics",
+    "timestamp": "2026-03-12T14:47:23.131997",
+    "speculation": true,
+    "confidence": 0.8
+  },
+  {
+    "id": "ccc422a8-0f16-4950-a77d-b84753b674a6",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "A 550-pound unexploded World War II bomb was successfully defused in Dresden, Germany, after a large-scale evacuation operation for thousands of people in the city center. The British-made bomb was discovered during work to rebuild a bridge over the river.",
+    "key_elements": [
+      "germany",
+      "dresden",
+      "world war ii",
+      "bomb",
+      "evacuation",
+      "british"
+    ],
+    "domain": "society",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "8fb35097-4fff-485f-8ee9-6c82bd6cd025",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "A World War II veteran was celebrated on his 100th birthday, a milestone recognized by NBC News.",
+    "key_elements": [
+      "world war ii",
+      "veteran",
+      "100th birthday",
+      "celebration"
+    ],
+    "domain": "society",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "e214b3af-ceb1-4738-b2d5-50ae1d3fd766",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "China has approved a new \"ethnic unity\" law, mandating that minority ethnic groups learn Mandarin and that parents guide their children to love the Communist Party. The law also encourages mixed neighborhoods as part of a broader effort for minorities to \"blend in,\" amidst accusations by Beijing of restricting minority rights in regions like Tibet.",
+    "key_elements": [
+      "china",
+      "ethnic unity law",
+      "mandarin",
+      "minorities",
+      "tibet",
+      "communist party",
+      "government policy",
+      "human rights"
+    ],
+    "domain": "geopolitics",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "4eed7644-bfb4-4bbe-985e-45a4c9f0641c",
+    "prev": [
+      "6e068955-2bbc-485a-8374-5978cf1939ef"
+    ],
+    "next": [
+      "50016207-8edb-432f-a6d2-c7d305d635d0",
+      "40c93cfa-887b-43bb-a0c2-36e0ffe5411c",
+      "2bf04207-6ba7-45b4-93f5-a6f041b3e892"
+    ],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "The UK government released internal documents showing Prime Minister Keir Starmer was warned of reputational risks before appointing Peter Mandelson, a known associate of Jeffrey Epstein, as US ambassador in 2024. This comes amid scrutiny over why UK police repeatedly declined to investigate claims about Epstein, Prince Andrew, and Ghislaine Maxwell. Separately, Brazilian women have come forward alleging Epstein used modeling agent Jean-Luc Brunel to recruit girls. The scandal's global reach was further highlighted when Rahul Gandhi referenced Epstein in a political jab in the Indian Parliament.",
+    "key_elements": [
+      "jeffrey epstein",
+      "uk",
+      "peter mandelson",
+      "keir starmer",
+      "us ambassador",
+      "prince andrew",
+      "ghislaine maxwell",
+      "virginia giuffre",
+      "police investigation",
+      "brazil",
+      "jean-luc brunel",
+      "sexual abuse",
+      "india",
+      "rahul gandhi",
+      "politics",
+      "society",
+      "government"
+    ],
+    "domain": "society",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "ce5cb652-5728-4a19-a95e-f651c90e6829",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "A Russian military court has jailed nineteen individuals for their involvement in a deadly concert hall attack near Moscow that resulted in 149 deaths and over 500 injuries, marking Russia's deadliest mass shooting in two decades.",
+    "key_elements": [
+      "russia",
+      "moscow",
+      "concert attack",
+      "terrorism",
+      "court",
+      "jailing"
+    ],
+    "domain": "society",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "3d6a0f47-9651-46be-9c30-8b066c49488b",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Ren\u00e9 Redzepi, the renowned head chef of Noma, has resigned from the highly-rated restaurant following allegations of abuse. His departure concludes more than two decades of leadership at Noma.",
+    "key_elements": [
+      "rene redzepi",
+      "noma",
+      "restaurant",
+      "chef",
+      "abuse allegations",
+      "resignation"
+    ],
+    "domain": "society",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "815698dd-041d-40c4-afdc-66f029d7a8b3",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "A tribute album for the late Pogues frontman Shane MacGowan is being recorded by notable musicians including Hozier, Jessie Buckley, and Bruce Springsteen, three years after his death.",
+    "key_elements": [
+      "shane macgowan",
+      "hozier",
+      "jessie buckley",
+      "bruce springsteen",
+      "music",
+      "tribute album"
+    ],
+    "domain": "culture",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "e73739a6-db28-4c64-9f8a-e7f6e0061d7a",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "A Chinese national was arrested at Kenya's main airport for allegedly attempting to smuggle over 2,000 queen garden ants, which were found concealed in test tubes and tissue paper rolls.",
+    "key_elements": [
+      "kenya",
+      "china",
+      "smuggling",
+      "queen ants",
+      "arrest",
+      "wildlife crime"
+    ],
+    "domain": "environment",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "69d2cd31-992c-4eef-8f32-d477e7c32e54",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "A Van Allen Probe spacecraft, weighing over 1,300lb (600kg) and launched in 2012, has re-entered Earth's atmosphere. The re-entry was confirmed by the US Space Force.",
+    "key_elements": [
+      "nasa",
+      "van allen probe",
+      "spacecraft",
+      "earth's atmosphere",
+      "us space force",
+      "science"
+    ],
+    "domain": "science",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "f0a1541f-330f-498a-9430-47a6263fb912",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "At least 64 people have been killed and dozens more are missing due to devastating floods and landslides in Ethiopia's Gamo Zone, triggered by heavy rains. Local authorities have advised residents in vulnerable areas to take precautions.",
+    "key_elements": [
+      "ethiopia",
+      "gamo zone",
+      "floods",
+      "landslides",
+      "heavy rains",
+      "natural disaster",
+      "death toll"
+    ],
+    "domain": "environment",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "c5629cab-192b-4c7b-b5a1-b16298488f22",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "British perfumier Jo Malone is being sued by Est\u00e9e Lauder Companies for using her own name in a collaboration with High Street retailer Zara, with Est\u00e9e Lauder claiming infringement on the \"Jo Malone\" brand.",
+    "key_elements": [
+      "jo malone",
+      "estee lauder",
+      "zara",
+      "lawsuit",
+      "brand",
+      "fragrance"
+    ],
+    "domain": "economics",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "0423bbd9-2ec9-4c87-8509-7fbd28adbd49",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Irth Capital, a Qatari-backed investment fund, has reportedly made a $1.5 billion offer to acquire pizza chain Papa John\u2019s International, marking their second attempt to take over the company.",
+    "key_elements": [
+      "qatar",
+      "irth capital",
+      "papa john's",
+      "acquisition",
+      "pizza",
+      "business"
+    ],
+    "domain": "economics",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "1bcf3400-a795-41ec-8010-29c0f183f5e2",
+    "prev": [
+      "6e068955-2bbc-485a-8374-5978cf1939ef"
+    ],
+    "next": [
+      "6f6d5cbb-6a4c-4670-b22b-617c12b81523",
+      "cfd7893b-523f-41f0-85e4-381b22b5bdf8"
+    ],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Jos\u00e9 Antonio Kast has been sworn in as Chile's new president, marking a significant shift to the far-right in the nation's politics and making him the most conservative leader since Pinochet. Kast has pledged stricter policies on crime and migration, and a foreign policy favoring stronger ties with Israel and the US.",
+    "key_elements": [
+      "chile",
+      "jose antonio kast",
+      "president",
+      "far-right",
+      "politics",
+      "pinochet",
+      "crime",
+      "migration",
+      "israel",
+      "us"
+    ],
+    "domain": "geopolitics",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "50016207-8edb-432f-a6d2-c7d305d635d0",
+    "prev": [
+      "4eed7644-bfb4-4bbe-985e-45a4c9f0641c"
+    ],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "The UK government has decided to cut a flagship global health project, a move that aims to strengthen healthcare systems worldwide, drawing criticism from global development experts.",
+    "key_elements": [
+      "uk",
+      "government",
+      "global health",
+      "funding cuts",
+      "healthcare",
+      "aid"
+    ],
+    "domain": "health",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "77034abc-4079-4243-8723-41f3e4ff1c76",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Experts are raising alarms that \"invasive\" AI-led mass surveillance across Africa is infringing upon fundamental freedoms. They point to the widespread deployment of advanced surveillance technologies as a significant human rights concern.",
+    "key_elements": [
+      "africa",
+      "ai",
+      "surveillance",
+      "mass surveillance",
+      "human rights",
+      "technology",
+      "experts"
+    ],
+    "domain": "technology",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "1f80628c-9867-4798-9c9b-310e8cc287c5",
+    "prev": [],
+    "next": [
+      "b768a524-dde4-4c32-8fcd-a80a19c6a035"
+    ],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "A drone strike targeting a school in Sudan has resulted in the deaths of at least 17 people.",
+    "key_elements": [
+      "sudan",
+      "drone strike",
+      "school",
+      "civilians",
+      "conflict"
+    ],
+    "domain": "military",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "b768a524-dde4-4c32-8fcd-a80a19c6a035",
+    "prev": [
+      "1f80628c-9867-4798-9c9b-310e8cc287c5"
+    ],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "M23 rebels in the eastern Democratic Republic of Congo reported that a drone strike killed three people, including a French aid worker.",
+    "key_elements": [
+      "democratic republic of congo",
+      "drc",
+      "m23 rebels",
+      "drone strike",
+      "french aid worker",
+      "conflict"
+    ],
+    "domain": "military",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "c0fa84fd-b865-4700-8dda-a853a96adb8c",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "At least 65 Nigerian soldiers were killed in a series of jihadist raids conducted in the country's north-east region.",
+    "key_elements": [
+      "nigeria",
+      "soldiers",
+      "jihadist raids",
+      "terrorism",
+      "military",
+      "conflict"
+    ],
+    "domain": "military",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "d0058e3f-84aa-4f90-a997-8dea7524f1a3",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Scientists are advocating for a reduction in fossil fuel consumption to mitigate deadly floods impacting Brazil's coffee heartland, emphasizing the connection between climate change and extreme weather events.",
+    "key_elements": [
+      "brazil",
+      "floods",
+      "fossil fuels",
+      "climate change",
+      "scientists",
+      "environment",
+      "coffee heartland"
+    ],
+    "domain": "environment",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "9b4b71ff-7e30-484b-83a2-d827cc00d437",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "A recent study indicates that El Salvador's mass arrest policy, implemented to combat gang violence, may have led to crimes against humanity, drawing increased international scrutiny.",
+    "key_elements": [
+      "el salvador",
+      "mass arrest policy",
+      "crimes against humanity",
+      "gang violence",
+      "human rights",
+      "study"
+    ],
+    "domain": "society",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "40c93cfa-887b-43bb-a0c2-36e0ffe5411c",
+    "prev": [
+      "4eed7644-bfb4-4bbe-985e-45a4c9f0641c"
+    ],
+    "next": [
+      "6f6d5cbb-6a4c-4670-b22b-617c12b81523"
+    ],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Argentina has granted asylum to an individual involved in the Bras\u00edlia riots, a decision that political analysts suggest could influence the upcoming election in Brazil.",
+    "key_elements": [
+      "argentina",
+      "brazil",
+      "asylum",
+      "brasilia riots",
+      "election",
+      "politics",
+      "diplomacy"
+    ],
+    "domain": "geopolitics",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": true,
+    "confidence": 0.7
+  },
+  {
+    "id": "b6c43eb8-e1f5-42d7-a38a-12bec95dac73",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "US prosecutors have asserted that the assassination of Haiti's President Jovenel Mo\u00efse was motivated by greed and power, as stated during the ongoing legal proceedings.",
+    "key_elements": [
+      "haiti",
+      "jovenel moise",
+      "assassination",
+      "us prosecutors",
+      "greed",
+      "power",
+      "investigation"
+    ],
+    "domain": "society",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "15811209-76c2-4b33-95c9-421919d29b5a",
+    "prev": [
+      "6e068955-2bbc-485a-8374-5978cf1939ef"
+    ],
+    "next": [
+      "d9b2fa2d-38c8-444d-b5dc-5bf8ffc98c9c"
+    ],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Russia's \"scorched-earth\" attacks on Ukraine's energy systems have intensified threefold this winter, pushing the nation's power grid close to collapse. A total breakdown has been averted through continuous repairs and Western aid.",
+    "key_elements": [
+      "russia",
+      "ukraine",
+      "energy system",
+      "power grid",
+      "attacks",
+      "war",
+      "western aid"
+    ],
+    "domain": "military",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "1ee19fb3-7074-4527-b214-ca886a381be2",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Ukraine has achieved the capability to manufacture \"China-Free\" drones, prioritizing self-sufficiency for this crucial military technology. Despite this, fully eliminating reliance on cheaper Chinese components remains a challenge.",
+    "key_elements": [
+      "ukraine",
+      "china",
+      "drones",
+      "military technology",
+      "self-sufficiency",
+      "manufacturing"
+    ],
+    "domain": "military",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "d9b2fa2d-38c8-444d-b5dc-5bf8ffc98c9c",
+    "prev": [
+      "15811209-76c2-4b33-95c9-421919d29b5a"
+    ],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Russia has stepped up its drone attacks on Ukraine's railway infrastructure, aiming to disrupt the country's economy and supply lines. A civilian train carrying 200 passengers was recently hit, damaging the locomotive.",
+    "key_elements": [
+      "russia",
+      "ukraine",
+      "drone attacks",
+      "railways",
+      "military strategy",
+      "economy"
+    ],
+    "domain": "military",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "4fd5f9b5-1b4e-45d6-b4d1-82636b9aeeb7",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Senegal's parliament has approved new legislation that doubles the maximum prison sentence for same-sex relations to 10 years and increases fines. This law, a key campaign promise of President Bassirou Diomaye Faye, is part of a broader regional trend towards stricter anti-LGBT laws.",
+    "key_elements": [
+      "senegal",
+      "lgbtq+",
+      "law",
+      "human rights",
+      "bassirou diomaye faye",
+      "politics"
+    ],
+    "domain": "society",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "8ffdf1ea-0c19-42a4-b3b6-bb3b767b38d7",
+    "prev": [
+      "6e068955-2bbc-485a-8374-5978cf1939ef"
+    ],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "The United States has initiated two new trade investigations into excess industrial capacity and imports made with forced labor, which could lead to new tariffs on major trading partners including the EU, China, India, Japan, South Korea, and Mexico. This action follows a Supreme Court decision limiting President Trump's global tariff program.",
+    "key_elements": [
+      "us",
+      "trade",
+      "tariffs",
+      "trade probes",
+      "china",
+      "eu",
+      "india",
+      "japan",
+      "south korea",
+      "mexico",
+      "forced labor",
+      "donald trump"
+    ],
+    "domain": "economics",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": true,
+    "confidence": 0.9
+  },
+  {
+    "id": "c00b75fa-e812-4708-92cb-813e1967a713",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Cambodian authorities claim a 50% reduction in cybercrime activity within scam compounds this year, in response to international pressure. However, analysts are skeptical, noting a lack of evidence that senior figures in the scam industry will face accountability.",
+    "key_elements": [
+      "cambodia",
+      "cybercrime",
+      "scam compounds",
+      "international pressure",
+      "law enforcement",
+      "southeast asia",
+      "analysts"
+    ],
+    "domain": "society",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": true,
+    "confidence": 0.7
+  },
+  {
+    "id": "3b02da58-5876-4f1f-a009-2c0de3fde0ae",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Thousands of Rohingya refugees continue to risk their lives attempting to flee Myanmar and Bangladesh by sea annually, with hundreds dying or going missing, as reported by the UNHCR, including recent incidents of smuggler boats sinking.",
+    "key_elements": [
+      "rohingya",
+      "myanmar",
+      "bangladesh",
+      "migration",
+      "refugees",
+      "smuggling",
+      "unhcr",
+      "humanitarian crisis"
+    ],
+    "domain": "society",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "4e941235-0fed-427f-a8e1-e8206d2e3eb5",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "South Africa has deployed its military to major cities, including Johannesburg and Mitchells Plain, to address a surge in gang-related violence. While some support this as decisive action, critics worry about the potential for escalating conflict.",
+    "key_elements": [
+      "south africa",
+      "military deployment",
+      "crime",
+      "gang violence",
+      "johannesburg",
+      "mitchells plain",
+      "society"
+    ],
+    "domain": "society",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "6f6d5cbb-6a4c-4670-b22b-617c12b81523",
+    "prev": [
+      "1bcf3400-a795-41ec-8010-29c0f183f5e2",
+      "40c93cfa-887b-43bb-a0c2-36e0ffe5411c"
+    ],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Poland's nationalist conservative Law and Justice (PiS) party has chosen Catholic hard-liner Przemyslaw Czarnek as its lead candidate for the 2027 parliamentary election, a move intended to attract far-right voters.",
+    "key_elements": [
+      "poland",
+      "law and justice party",
+      "pis",
+      "przemyslaw czarnek",
+      "far-right",
+      "election",
+      "politics"
+    ],
+    "domain": "politics",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "ef098e1e-2c94-4ba0-92e1-d77961b72543",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "An analysis highlights the profound influence of French intellectuals, such as Ren\u00e9 Descartes, on global knowledge and ideas, underscoring France's historical contributions to philosophy and critical thought.",
+    "key_elements": [
+      "france",
+      "intellectuals",
+      "philosophy",
+      "rene descartes",
+      "culture",
+      "ideas"
+    ],
+    "domain": "culture",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "4cc201be-8b22-42d2-83e8-99576bebe398",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Israeli aircraft were documented spraying herbicides over agricultural land near Quneitra in southern Syria in January and February 2026, with Syrian farmers confirming the impact.",
+    "key_elements": [
+      "israel",
+      "syria",
+      "herbicides",
+      "farmland",
+      "agriculture",
+      "conflict",
+      "environment"
+    ],
+    "domain": "geopolitics",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "2bf04207-6ba7-45b4-93f5-a6f041b3e892",
+    "prev": [
+      "4eed7644-bfb4-4bbe-985e-45a4c9f0641c"
+    ],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "India's BJP party is conducting a crucial meeting to finalize its candidates and strategize for the upcoming assembly elections in the states of Kerala and West Bengal.",
+    "key_elements": [
+      "india",
+      "bjp",
+      "kerala",
+      "west bengal",
+      "elections",
+      "politics"
+    ],
+    "domain": "politics",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "cfd7893b-523f-41f0-85e4-381b22b5bdf8",
+    "prev": [
+      "6e068955-2bbc-485a-8374-5978cf1939ef",
+      "1bcf3400-a795-41ec-8010-29c0f183f5e2"
+    ],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "Six players and one staff member from the Iranian women's football team sought asylum in Australia during the Asian Cup, though one player later expressed a desire to return. Concurrently, Iran's sports minister announced the national soccer team would withdraw from the FIFA World Cup amidst the ongoing US-Israel military campaign that killed Iran's supreme leader.",
+    "key_elements": [
+      "iran",
+      "australia",
+      "women's football",
+      "asylum",
+      "fifa world cup",
+      "us",
+      "israel",
+      "supreme leader",
+      "war",
+      "sports",
+      "human rights"
+    ],
+    "domain": "society",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  },
+  {
+    "id": "710345e7-f859-408b-a197-7e69592e1ab9",
+    "prev": [],
+    "next": [],
+    "reference": "C:\\Users\\LENOVO\\Desktop\\OpenAtlas\\model\\.cache\\120320261906.txt",
+    "content": "China\u2019s proposal to raise farmer pensions by less than $3 a month during its major political meeting sparked rare criticism from lawmakers regarding the country\u2019s inadequate social safety net and rising inequality.",
+    "key_elements": [
+      "china",
+      "political meeting",
+      "inequality",
+      "pensions",
+      "farmers",
+      "social safety net"
+    ],
+    "domain": "economics",
+    "timestamp": "2026-03-12T14:47:23.133004",
+    "speculation": false,
+    "confidence": null
+  }
+]

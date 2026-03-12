@@ -1,0 +1,79 @@
+import './DetailPanel.css';
+
+export default function DetailPanel({ node, onClose, domainColor }) {
+  const {
+    content,
+    domain,
+    key_elements,
+    speculation,
+    confidence,
+    timestamp,
+    id,
+    next,
+    prev,
+  } = node;
+
+  return (
+    <div className="detail-panel">
+      <div className="detail-header">
+        <div className="detail-domain-row">
+          <span
+            className="detail-domain"
+            style={{ background: `${domainColor}20`, color: domainColor, borderColor: `${domainColor}40` }}
+          >
+            {domain}
+          </span>
+          {speculation && (
+            <span className="detail-spec">
+              ⚡ Speculative — {Math.round((confidence || 0) * 100)}% confidence
+            </span>
+          )}
+        </div>
+        <button className="detail-close" onClick={onClose}>✕</button>
+      </div>
+
+      <p className="detail-content">{content}</p>
+
+      <div className="detail-section">
+        <h3 className="detail-section-title">Key Elements</h3>
+        <div className="detail-tags">
+          {(key_elements || []).map((k) => (
+            <span key={k} className="detail-tag" style={{ borderColor: `${domainColor}30` }}>
+              {k}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="detail-section">
+        <h3 className="detail-section-title">Connections</h3>
+        <div className="detail-connections">
+          <div className="detail-conn">
+            <span className="detail-conn-label">Outgoing</span>
+            <span className="detail-conn-value" style={{ color: domainColor }}>
+              {next?.length || 0}
+            </span>
+          </div>
+          <div className="detail-conn">
+            <span className="detail-conn-label">Incoming</span>
+            <span className="detail-conn-value" style={{ color: domainColor }}>
+              {prev?.length || 0}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="detail-meta">
+        <span className="detail-meta-item">
+          {new Date(timestamp).toLocaleDateString('en-US', {
+            year: 'numeric', month: 'short', day: 'numeric',
+            hour: '2-digit', minute: '2-digit'
+          })}
+        </span>
+        <span className="detail-meta-item detail-id" title={id}>
+          {id.slice(0, 8)}…
+        </span>
+      </div>
+    </div>
+  );
+}
