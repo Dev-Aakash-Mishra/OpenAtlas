@@ -1,6 +1,6 @@
 import './DetailPanel.css';
 
-export default function DetailPanel({ node, onClose, domainColor }) {
+export default function DetailPanel({ node, onClose, domainColor, onFollowThread, onPredictBranch, onMaterialize }) {
   const {
     content,
     domain,
@@ -11,6 +11,8 @@ export default function DetailPanel({ node, onClose, domainColor }) {
     id,
     next,
     prev,
+    source_url,
+    isGhost,
   } = node;
 
   return (
@@ -61,6 +63,34 @@ export default function DetailPanel({ node, onClose, domainColor }) {
             </span>
           </div>
         </div>
+        
+        {isGhost ? (
+          <button 
+            className="detail-thread-btn"
+            onClick={() => onMaterialize(node)}
+            style={{ width: '100%', marginTop: '12px', padding: '10px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+          >
+            ✨ Materialize to Graph
+          </button>
+        ) : (
+          <>
+            <button 
+              className="detail-thread-btn"
+              onClick={() => onFollowThread(id)}
+              style={{ width: '100%', marginTop: '12px', padding: '10px', background: domainColor, color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            >
+              🧶 Follow Narrative Thread
+            </button>
+
+            <button 
+              className="detail-thread-btn"
+              onClick={() => onPredictBranch(id)}
+              style={{ width: '100%', marginTop: '8px', padding: '10px', background: 'transparent', color: domainColor, border: `1px solid ${domainColor}80`, borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            >
+              🔮 Predict Future Consequences
+            </button>
+          </>
+        )}
       </div>
 
       <div className="detail-meta">
@@ -73,6 +103,17 @@ export default function DetailPanel({ node, onClose, domainColor }) {
         <span className="detail-meta-item detail-id" title={id}>
           {id.slice(0, 8)}…
         </span>
+        {source_url && (
+          <a 
+            href={source_url} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="detail-source-link"
+            style={{ color: domainColor, marginLeft: 'auto', textDecoration: 'none', fontWeight: '500' }}
+          >
+            Read Source ↗
+          </a>
+        )}
       </div>
     </div>
   );

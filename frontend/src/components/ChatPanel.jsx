@@ -38,18 +38,29 @@ export default function ChatPanel({ onNodeSelect, onClose, fontSize }) {
 
       const data = await res.json();
 
+      const newCited = data.cited_nodes || [];
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           text: data.answer,
-          citedNodes: data.cited_nodes || [],
+          citedNodes: newCited,
         },
       ]);
+      
+      // Auto-pan the graph camera to the primary node referenced by the AI
+      if (newCited.length > 0) {
+        setTimeout(() => onNodeSelect(newCited[0]), 300);
+      }
     } catch (err) {
+      console.error('Chat error:', err);
       setMessages((prev) => [
         ...prev,
-        { role: 'assistant', text: `Error: ${err.message}`, isError: true },
+        { 
+          role: 'assistant', 
+          text: `I'm having trouble connecting to the Atlas Brain. ${err.message || 'Please check if the backend is running and try again.'}`, 
+          isError: true 
+        },
       ]);
     } finally {
       setLoading(false);
@@ -93,6 +104,7 @@ export default function ChatPanel({ onNodeSelect, onClose, fontSize }) {
           <span className="chat-title">Atlas Chat</span>
         </div>
         <div className="chat-header-right">
+          <button className="chat-clear" onClick={() => setMessages([{role: 'assistant', text: "Hi! Ask me anything about the knowledge graph. I'll find relevant nodes and answer with citations."}])} title="Clear Chat" style={{marginRight: '10px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#a1a1aa', fontSize: '1.2rem'}}>⟲</button>
           <button className="chat-close" onClick={onClose}>✕</button>
         </div>
       </div>
