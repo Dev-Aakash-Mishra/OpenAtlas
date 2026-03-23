@@ -1,16 +1,18 @@
 import os
 import sys
 import logging
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from model.query import query_graph, get_node_by_id, search_nodes
-from model.build_graph import load_nodes
+from model.query import query_graph, get_node_by_id, search_nodes, find_narrative_thread, predict_speculative_branches, materialize_ghost_node
+from model.build_graph import Node
+from model.neo4j_client import neo4j_client
+from scheduler import start_background_worker
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,6 +26,12 @@ GRAPH_PATH = os.path.join(ROOT_DIR, "..", "data", "graph.json")
 FRONTEND_DIST = os.path.join(ROOT_DIR, "..", "frontend", "dist")
 
 app = FastAPI(title="OpenAtlas API", version="1.0.0")
+
+@app.on_event("startup")
+def startup_event():
+    logger.info("Starting background feed worker...")
+    # Increased interval to 5 minutes to avoid Gemini API Rate Limits (Error 429)
+    start_background_worker(interval_seconds=300)
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,16 +49,38 @@ class ChatResponse(BaseModel):
     cited_nodes: list[str]
     context_nodes: list[dict]
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception on {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "An internal server error occurred."}
+    )
+
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok"}
+
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(req: ChatRequest) -> ChatResponse:
     if not req.question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty")
-    result = query_graph(req.question, GRAPH_PATH)
-    return ChatResponse(**result)
+    try:
+        logger.info(f"Received chat request: {req.question[:50]}...")
+        result = query_graph(req.question)
+        return ChatResponse(**result)
+    except Exception as e:
+        logger.error(f"CRITICAL: Chat endpoint failed: {e}", exc_info=True)
+        # We return a 500 but with a clear log so we can debug. 
+        # The frontend will catch this and show a friendly message.
+        raise HTTPException(
+            status_code=500, 
+            detail=f"OpenAtlas Intelligence is currently unavailable. (Code: {type(e).__name__})"
+        )
 
 @app.get("/api/nodes/{node_id}")
 def get_node(node_id: str) -> dict:
-    node = get_node_by_id(node_id, GRAPH_PATH)
+    node = get_node_by_id(node_id)
     if not node:
         raise HTTPException(status_code=404, detail=f"Node {node_id} not found")
     return node.model_dump(mode="json")
@@ -59,13 +89,51 @@ def get_node(node_id: str) -> dict:
 def search(q: str = "") -> list[dict]:
     if not q.strip():
         return []
-    nodes = search_nodes(q, GRAPH_PATH)
+    nodes = search_nodes(q)
     return [n.model_dump(mode="json") for n in nodes]
+
+@app.get("/api/narrative_thread/{node_id}")
+def get_narrative_thread(node_id: str) -> dict:
+    return find_narrative_thread(node_id)
+
+@app.get("/api/predict_branch/{node_id}")
+def get_predict_branch(node_id: str) -> list[dict]:
+    return predict_speculative_branches(node_id)
+
+@app.post("/api/materialize")
+def post_materialize(data: dict) -> dict:
+    return materialize_ghost_node(data)
 
 @app.get("/api/graph")
 def get_graph() -> list[dict]:
-    nodes = load_nodes(GRAPH_PATH)
-    return [n.model_dump(mode="json") for n in nodes]
+    """Fetch latest 150 nodes and their relationships from Neo4j."""
+    cypher = """
+    MATCH (n:Event)
+    OPTIONAL MATCH (n)-[:CONNECTED_TO]->(m:Event)
+    WITH n, collect(m.id) as next_ids
+    ORDER BY n.timestamp DESC
+    LIMIT 150
+    RETURN n, next_ids
+    """
+    result = neo4j_client.execute_query(cypher)
+    
+    nodes_data = []
+    if result:
+        for record in result:
+            data = dict(record['n'])
+            if 'timestamp' in data:
+                data['timestamp'] = str(data['timestamp'])
+            
+            # Neo4j property might be 'sentiment'
+            data['sentiment'] = data.get('sentiment', 0.0)
+            
+            # Map Neo4j relationships to the 'next' and 'prev' fields for React Flow
+            data['next'] = record['next_ids']
+            data['prev'] = [] # Simplified: React Flow edges handle direction
+            
+            nodes_data.append(data)
+            
+    return nodes_data
 
 if os.path.exists(FRONTEND_DIST):
     # Standard way to serve assets

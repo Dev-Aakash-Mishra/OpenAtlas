@@ -13,8 +13,7 @@ client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 MODEL = "gemini-2.5-flash"
 
-MAX_RETRIES = 3
-
+MAX_RETRIES = 5
 
 def chat_llm(query: str, system_prompt: str = None) -> str:
     contents = []
@@ -28,15 +27,17 @@ def chat_llm(query: str, system_prompt: str = None) -> str:
             response = client.models.generate_content(model=MODEL, contents=contents)
             return response.text
         except Exception as e:
-            err = str(e)
+            err = str(e).upper()
             if "429" in err or "RESOURCE_EXHAUSTED" in err:
-                wait = 30 * attempt
-                logger.warning("Rate limited (attempt %d/%d). Waiting %ds...",
+                # Exponential backoff: 30, 60, 120, 240, 480
+                wait = 30 * (2 ** (attempt - 1))
+                logger.warning("Rate limit hit (429/ResourceExhausted). Retrying %d/%d in %ds...",
                                attempt, MAX_RETRIES, wait)
                 time.sleep(wait)
             else:
+                logger.error("LLM call failed with error: %s", e)
                 raise
-    raise RuntimeError(f"Failed after {MAX_RETRIES} retries")
+    raise RuntimeError(f"Failed to communicate with Gemini after {MAX_RETRIES} attempts due to rate limiting.")
 
 
 def chat_llm_json(query: str, system_prompt: str = None) -> list | dict:
@@ -49,3 +50,28 @@ def chat_llm_json(query: str, system_prompt: str = None) -> list | dict:
     if raw.endswith("```"):
         raw = raw[:-3]
     return json.loads(raw.strip())
+
+
+def get_embedding(text: str) -> list[float]:
+    if not text.strip():
+        return []
+    
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            # We use gemini-embedding-2-preview with output_dimensionality=768 to match Neo4j
+            response = client.models.embed_content(
+                model="models/gemini-embedding-2-preview",
+                contents=text,
+                config={"output_dimensionality": 768}
+            )
+            return response.embeddings[0].values
+        except Exception as e:
+            err = str(e).upper()
+            if "429" in err or "RESOURCE_EXHAUSTED" in err:
+                wait = 15 * attempt
+                logger.warning("Embedding Rate limit hit. Waiting %ds...", wait)
+                time.sleep(wait)
+            else:
+                logger.error("Embedding failed: %s", e)
+                return []
+    return []

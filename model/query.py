@@ -1,11 +1,10 @@
 import os
 import logging
-from model.build_graph import Node, load_nodes
-from model.llm import chat_llm
+from model.build_graph import Node
+from model.llm import chat_llm, get_embedding
+from model.neo4j_client import neo4j_client
 
 logger = logging.getLogger(__name__)
-
-GRAPH_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "graph.json")
 
 QUERY_SYSTEM_PROMPT = """You are OpenAtlas, an AI analyst that answers questions using a knowledge graph of real-world news events.
 
@@ -21,120 +20,241 @@ RULES:
 - Be concise but thorough. Use 2-4 paragraphs max.
 - Structure your answer clearly with key facts first."""
 
+def find_relevant_nodes(query: str, top_k: int = 8) -> list[Node]:
+    """Find relevant nodes using Neo4j Vector Search index."""
+    query_vec = get_embedding(query)
+    if not query_vec:
+        logger.warning("Failed to get embedding for query: %s", query)
+        return []
 
-def find_relevant_nodes(query: str, nodes: list[Node], top_k: int = 5) -> list[Node]:
-    query_terms = set(query.lower().split())
+    cypher = """
+    CALL db.index.vector.queryNodes('node_embeddings', $top_k, $query_embedding)
+    YIELD node AS n, score
+    RETURN n, score
+    """
+    
+    try:
+        results = neo4j_client.execute_query(cypher, {
+            "top_k": top_k,
+            "query_embedding": query_vec
+        })
+        
+        nodes = []
+        if results:
+            for record in results:
+                n_data = dict(record['n'])
+                if 'timestamp' in n_data:
+                    n_data['timestamp'] = str(n_data['timestamp'])
+                nodes.append(Node(**n_data))
+        return nodes
+    except Exception as e:
+        logger.error(f"Neo4j Vector Search failed: {e}")
+        return []
 
-    scored: list[tuple[float, Node]] = []
-    for node in nodes:
-        score = 0.0
+def search_nodes(q: str) -> list[Node]:
+    """Search nodes using keywords in Neo4j."""
+    cypher = """
+    MATCH (n:Event)
+    WHERE n.content CONTAINS $q OR any(k IN n.key_elements WHERE k CONTAINS $q)
+    RETURN n
+    LIMIT 50
+    """
+    result = neo4j_client.execute_query(cypher, {"q": q})
+    nodes = []
+    if result:
+        for record in result:
+            n_data = dict(record['n'])
+            if 'timestamp' in n_data:
+                n_data['timestamp'] = str(n_data['timestamp'])
+            nodes.append(Node(**n_data))
+    return nodes
 
-        content_lower = node.content.lower()
-        for term in query_terms:
-            if term in content_lower:
-                score += 2.0
-
-        for element in node.key_elements:
-            element_lower = element.lower()
-            for term in query_terms:
-                if term in element_lower or element_lower in query.lower():
-                    score += 3.0
-
-        query_lower = query.lower()
-        for element in node.key_elements:
-            if element.lower() in query_lower:
-                score += 5.0
-
-        connections = len(node.next) + len(node.prev)
-        score += connections * 0.5
-
-        if score > 0:
-            scored.append((score, node))
-
-    scored.sort(key=lambda x: x[0], reverse=True)
-    return [node for _, node in scored[:top_k]]
-
-
-def get_connected_nodes(node_ids: list[str], all_nodes: list[Node], depth: int = 1) -> list[Node]:
-    node_map: dict[str, Node] = {n.id: n for n in all_nodes}
-    collected: set[str] = set(node_ids)
-
-    frontier = set(node_ids)
-    for _ in range(depth):
-        next_frontier: set[str] = set()
-        for nid in frontier:
-            node = node_map.get(nid)
-            if not node:
-                continue
-            for linked_id in node.next + node.prev:
-                if linked_id not in collected:
-                    collected.add(linked_id)
-                    next_frontier.add(linked_id)
-        frontier = next_frontier
-
-    return [node_map[nid] for nid in collected if nid in node_map]
-
-
-def build_context(nodes: list[Node]) -> str:
-    parts: list[str] = []
-    for node in nodes:
-        parts.append(
-            f"[NODE {node.id[:8]}] (ID: {node.id})\n"
-            f"Domain: {node.domain}\n"
-            f"Content: {node.content}\n"
-            f"Key Elements: {', '.join(node.key_elements)}\n"
-            f"Speculation: {node.speculation}"
-            f"{f' (confidence: {node.confidence})' if node.confidence else ''}\n"
-            f"Connections: {len(node.next)} outgoing, {len(node.prev)} incoming"
-        )
-    return "\n\n---\n\n".join(parts)
-
-
-def get_node_by_id(node_id: str, graph_path: str = GRAPH_PATH) -> Node | None:
-    nodes = load_nodes(graph_path)
-    for node in nodes:
-        if node.id == node_id or node.id.startswith(node_id):
-            return node
+def get_node_by_id(node_id: str) -> Node | None:
+    """Fetch a single node by ID from Neo4j."""
+    cypher = "MATCH (n:Event {id: $id}) RETURN n"
+    result = neo4j_client.execute_query(cypher, {"id": node_id})
+    if result:
+        record = result[0]
+        n_data = dict(record['n'])
+        if 'timestamp' in n_data:
+            n_data['timestamp'] = str(n_data['timestamp'])
+        return Node(**n_data)
     return None
 
-
-def search_nodes(query: str, graph_path: str = GRAPH_PATH) -> list[Node]:
-    nodes = load_nodes(graph_path)
-    return find_relevant_nodes(query, nodes, top_k=10)
-
-
-def query_graph(question: str, graph_path: str = GRAPH_PATH) -> dict:
-    nodes = load_nodes(graph_path)
-    relevant = find_relevant_nodes(question, nodes, top_k=5)
-    
-    if not relevant:
+def query_graph(question: str) -> dict:
+    """End-to-end RAG query using Neo4j as context provider."""
+    # 1. Find relevant nodes via Vector Search
+    relevant_nodes = find_relevant_nodes(question, top_k=8)
+    if not relevant_nodes:
         return {
-            "answer": "I couldn't find any relevant information in the knowledge graph for your question.",
+            "answer": "I couldn't find any relevant events in the global ontology to answer your question.",
             "cited_nodes": [],
-            "context_nodes": [],
+            "context_nodes": []
         }
 
-    relevant_ids = [n.id for n in relevant]
-    context_nodes = get_connected_nodes(relevant_ids, nodes, depth=1)
-    context = build_context(context_nodes)
+    # 2. Build context string
+    context_parts = []
+    for n in relevant_nodes:
+        context_parts.append(f"[{n.id[:8]}] ({n.domain}): {n.content}")
+    
+    context_text = "\n\n".join(context_parts)
+    
+    # 3. Prompt LLM
+    prompt = f"""Use the following event context to answer: {question}
+    
+    Context:
+    {context_text}
+    
+    Rules:
+    - Cite source IDs in brackets (e.g. [8fc3a2]) when mentioning facts.
+    - Be objective and analytical."""
 
-    prompt = (
-        f"CONTEXT (Knowledge Graph Nodes):\n\n{context}\n\n"
-        f"---\n\n"
-        f"USER QUESTION: {question}\n\n"
-        f"Answer the question using the context above. Cite node IDs in [brackets]."
-    )
+    try:
+        answer = chat_llm(prompt, QUERY_SYSTEM_PROMPT)
+    except Exception as e:
+        logger.error(f"LLM Call failed: {e}")
+        answer = f"I encountered an error while processing your request. (Error: {e})"
 
-    answer = chat_llm(prompt, QUERY_SYSTEM_PROMPT)
-
-    cited_ids: list[str] = []
-    for node in context_nodes:
-        short_id = node.id[:8]
-        if short_id in answer:
-            cited_ids.append(node.id)
+    cited_ids = []
+    for n in relevant_nodes:
+        if n.id[:8] in answer:
+            cited_ids.append(n.id)
 
     return {
         "answer": answer,
         "cited_nodes": cited_ids,
-        "context_nodes": [n.model_dump(mode="json") for n in context_nodes],
+        "context_nodes": [n.model_dump(mode="json") for n in relevant_nodes]
     }
+
+NARRATIVE_SYSTEM_PROMPT = """You are a Storytelling Engine.
+Given a start event and several potential paths of connected events, pick the ONE path that represents the most logical, causal, or interesting narrative thread.
+
+Rules:
+- A path is a list of node IDs.
+- Return a JSON object with:
+  - "path": list of the full node IDs in order.
+  - "explanation": a concise (1-2 sentence) explanation of the causal link.
+- Only return valid JSON."""
+
+def find_narrative_thread(node_id: str) -> dict:
+    """Find a causal narrative thread starting from a node."""
+    # Find paths up to length 4 (3 hops)
+    cypher = """
+    MATCH p = (n:Event {id: $id})-[:CONNECTED_TO*1..3]->(m:Event)
+    RETURN [node in nodes(p) | {id: node.id, content: node.content}] as path_data
+    LIMIT 10
+    """
+    results = neo4j_client.execute_query(cypher, {"id": node_id})
+    
+    if not results:
+        return {"path": [node_id], "explanation": "No downstream connections found to form a narrative thread."}
+
+    # Format paths for the LLM
+    paths_text = []
+    for i, record in enumerate(results):
+        path_str = " -> ".join([f"[{step['id'][:8]}] {step['content'][:100]}..." for step in record['path_data']])
+        paths_text.append(f"Path {i+1}: {path_str}")
+
+    prompt = f"Available Paths:\n" + "\n".join(paths_text) + "\n\nSelect the best narrative path starting from the first node."
+    
+    try:
+        import json
+        raw_result = chat_llm(prompt, NARRATIVE_SYSTEM_PROMPT)
+        # Basic JSON extraction
+        if "```json" in raw_result:
+            raw_result = raw_result.split("```json")[1].split("```")[0]
+        
+        data = json.loads(raw_result.strip())
+        if not isinstance(data, dict) or "path" not in data or not isinstance(data["path"], list):
+             raise ValueError("Malformed LLM response: missing path list")
+        return data
+    except Exception as e:
+        logger.error(f"Narrative LLM failed or malformed: {e}")
+        # Fallback to the first path
+        first_path = [step['id'] for step in results[0]['path_data']]
+        return {"path": first_path, "explanation": "Automatically generated causal thread."}
+
+GHOST_SYSTEM_PROMPT = """You are a Predictive Analysis Engine.
+Given a current event, suggest 2-3 logical future consequences or "next steps".
+For each prediction, provide:
+- "content": A concise description of the potential consequence.
+- "domain": The likely domain (World, Tech, Finance, etc.).
+- "probability": A decimal between 0.0 and 1.0.
+
+Return a JSON array of objects."""
+
+def predict_speculative_branches(node_id: str) -> list[dict]:
+    """Predict potential future consequences of an event."""
+    node = get_node_by_id(node_id)
+    if not node:
+        return []
+
+    prompt = f"Current Event: {node.content}\n\nPredict 2-3 logical future consequences."
+    
+    try:
+        import json
+        import uuid
+        raw_result = chat_llm(prompt, GHOST_SYSTEM_PROMPT)
+        if "```json" in raw_result:
+            raw_result = raw_result.split("```json")[1].split("```")[0]
+        
+        predictions = json.loads(raw_result.strip())
+        ghost_nodes = []
+        for pred in predictions:
+            g_id = f"ghost_{uuid.uuid4().hex[:8]}"
+            ghost_nodes.append({
+                "id": g_id,
+                "content": pred["content"],
+                "domain": pred.get("domain", "Predictive"),
+                "probability": pred.get("probability", 0.5),
+                "isGhost": True,
+                "source_id": node_id,
+                "timestamp": node.timestamp # Close to source for layout
+            })
+        return ghost_nodes
+    except Exception as e:
+        logger.error(f"Ghost prediction failed: {e}")
+        return []
+
+def materialize_ghost_node(data: dict) -> dict:
+    """Transform a ghost node into a real persistent node in Neo4j."""
+    source_id = data.get("source_id")
+    content = data.get("content")
+    domain = data.get("domain", "Predictive")
+    
+    import uuid
+    from datetime import datetime
+    new_id = str(uuid.uuid4())
+    now = datetime.now().isoformat()
+    
+    query = """
+    MATCH (s:Node {id: $source_id})
+    CREATE (n:Node {
+        id: $new_id,
+        content: $content,
+        domain: $domain,
+        timestamp: $timestamp,
+        confidence: 0.7,
+        is_speculative: true
+    })
+    CREATE (s)-[:PREDICTS]->(n)
+    RETURN n.id as id
+    """
+    
+    try:
+        with neo4j_client.driver.session() as session:
+            result = session.run(query, {
+                "source_id": source_id,
+                "new_id": new_id,
+                "content": content,
+                "domain": domain,
+                "timestamp": now
+            })
+            record = result.single()
+            if record:
+                return {"status": "success", "id": record["id"]}
+    except Exception as e:
+        logger.error(f"Materialization failed: {e}")
+        return {"status": "error", "message": str(e)}
+    
+    return {"status": "error", "message": "Node could not be created"}

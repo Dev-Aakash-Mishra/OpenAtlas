@@ -5,9 +5,13 @@
   padding: 14px;
   min-width: 180px;
   max-width: 280px;
+  min-height: 120px;
+  height: auto;
   backdrop-filter: blur(12px);
   cursor: pointer;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
 }
 
 .event-node:hover {
@@ -76,4 +80,16 @@
   color: #6366f1;
   border-color: rgba(99, 102, 241, 0.2);
   background: rgba(99, 102, 241, 0.08);
+}
+
+.event-node.search-match {
+  animation: search-pulse 2s infinite;
+  border-width: 2px !important;
+  z-index: 100 !important;
+}
+
+@keyframes search-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
+  70% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
 }

@@ -1,4 +1,4 @@
-google-generativeai
+google-genai
 networkx
 pydantic
 python-dotenv
@@ -6,3 +6,5 @@ requests
 feedparser
 fastapi
 uvicorn
+numpy
+neo4j
