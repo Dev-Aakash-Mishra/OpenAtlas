@@ -28,6 +28,8 @@ echo [5/5] Launching OpenAtlas...
 timeout /t 5 /nobreak > nul
 start http://localhost:8000
 
+
+
 echo.
 echo ==========================================
 echo OpenAtlas is running at http://localhost:8000

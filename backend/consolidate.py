@@ -3,10 +3,14 @@ import sys
 import uuid
 import logging
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+# Ensure the root directory is in sys.path for internal module imports
+root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if root_path not in sys.path:
+    sys.path.insert(0, root_path)
 
 from model.build_graph import load_nodes, save_nodes, Node
-from model.llm import chat_llm_json
+from model.llm import chat_llm_json, get_embedding
+from model.neo4j_client import neo4j_client
 
 logger = logging.getLogger(__name__)
 
@@ -110,13 +114,53 @@ def run_consolidation():
                 macro_map[rid] = nn.id
 
         for n in final_nodes:
-            n.next = list(set([macro_map.get(t, t) for t in n.next if t not in ids_to_remove or target in macro_map]))
-            n.prev = list(set([macro_map.get(t, t) for t in n.prev if t not in ids_to_remove or target in macro_map]))
+            n.next = list(set([macro_map.get(t, t) for t in n.next if t not in ids_to_remove or t in macro_map]))
+            n.prev = list(set([macro_map.get(t, t) for t in n.prev if t not in ids_to_remove or t in macro_map]))
 
         final_nodes.extend(new_nodes)
         
+        # Sync to Neo4j
+        logger.info("Synchronizing consolidation changes to Neo4j...")
+        for nn in new_nodes:
+            # 1. Create macro node in Neo4j
+            nn.embedding = get_embedding(nn.content)
+            create_query = """
+            MERGE (e:Event {id: $id})
+            SET e.content = $content,
+                e.domain = $domain,
+                e.key_elements = $key_elements,
+                e.speculation = $speculation,
+                e.reference = $reference,
+                e.timestamp = datetime($timestamp),
+                e.embedding = $embedding
+            """
+            neo4j_client.execute_query(create_query, nn.model_dump(mode="json"))
+
+        # 2. Re-link nodes and delete old ones in Neo4j
+        for rid in ids_to_remove:
+            # Move relationships to macro node if they exist
+            target_macro_id = macro_map.get(rid)
+            if target_macro_id:
+                # Re-route incoming
+                neo4j_client.execute_query("""
+                    MATCH (a)-[r:CONNECTED_TO]->(old:Event {id: $rid})
+                    MATCH (new:Event {id: $macro_id})
+                    MERGE (a)-[:CONNECTED_TO]->(new)
+                    DELETE r
+                """, {"rid": rid, "macro_id": target_macro_id})
+                # Re-route outgoing
+                neo4j_client.execute_query("""
+                    MATCH (old:Event {id: $rid})-[r:CONNECTED_TO]->(b)
+                    MATCH (new:Event {id: $macro_id})
+                    MERGE (new)-[:CONNECTED_TO]->(b)
+                    DELETE r
+                """, {"rid": rid, "macro_id": target_macro_id})
+            
+            # Delete the old node
+            neo4j_client.execute_query("MATCH (e:Event {id: $rid}) DETACH DELETE e", {"rid": rid})
+
         save_nodes(final_nodes, GRAPH_PATH)
-        logger.info(f"✅ Consolidation complete. Shrunk {len(ids_to_remove)} redundant nodes into {len(new_nodes)} macro-nodes.")
+        logger.info(f"✅ Consolidation complete. Shrunk {len(ids_to_remove)} redundant nodes into {len(new_nodes)} macro-nodes in both JSON and Neo4j.")
 
     except Exception as e:
         logger.error(f"Consolidation failed: {e}")

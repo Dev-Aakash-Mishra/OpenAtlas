@@ -228,8 +228,8 @@ def materialize_ghost_node(data: dict) -> dict:
     now = datetime.now().isoformat()
     
     query = """
-    MATCH (s:Node {id: $source_id})
-    CREATE (n:Node {
+    MATCH (s:Event {id: $source_id})
+    CREATE (n:Event {
         id: $new_id,
         content: $content,
         domain: $domain,
@@ -258,3 +258,18 @@ def materialize_ghost_node(data: dict) -> dict:
         return {"status": "error", "message": str(e)}
     
     return {"status": "error", "message": "Node could not be created"}
+def deep_dive_node(node_id: str) -> dict:
+    """Generate a detailed 2-3 paragraph analysis of a node."""
+    node = get_node_by_id(node_id)
+    if not node:
+        return {"status": "error", "message": "Node not found"}
+
+    system_prompt = "You are a Senior Political and Economic Analyst. Provide a 2-3 paragraph deep-dive analysis of the given event. Focus on long-term implications and historical context."
+    prompt = f"Event: {node.content}\nDomain: {node.domain}\nKey Elements: {', '.join(node.key_elements)}\n\nProvide a detailed deep-dive analysis."
+    
+    try:
+        analysis = chat_llm(prompt, system_prompt)
+        return {"status": "success", "analysis": analysis}
+    except Exception as e:
+        logger.error(f"Deep dive failed: {e}")
+        return {"status": "error", "message": str(e)}

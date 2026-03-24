@@ -1,18 +1,39 @@
 import os
 import sys
 import logging
+import time
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
+import time
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+# Ensure the root directory is in sys.path for internal module imports
+root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if root_path not in sys.path:
+    sys.path.insert(0, root_path)
 
-from model.query import query_graph, get_node_by_id, search_nodes, find_narrative_thread, predict_speculative_branches, materialize_ghost_node
+from model.query import query_graph, get_node_by_id, search_nodes, find_narrative_thread, predict_speculative_branches, materialize_ghost_node, deep_dive_node
 from model.build_graph import Node
 from model.neo4j_client import neo4j_client
-from scheduler import start_background_worker
+from scheduler import start_background_worker, fetch_and_ingest, worker_status
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    logger.info("Initializing Neo4j Vector Index...")
+    try:
+        neo4j_client.init_vector_index()
+    except Exception as e:
+        logger.error(f"Failed to auto-init vector index: {e}")
+        
+    logger.info("Starting background feed worker...")
+    # Increased interval to 5 minutes to avoid Gemini API Rate Limits (Error 429)
+    start_background_worker(interval_seconds=300)
+    yield
+    logger.info("Shutting down background worker...")
 
 logging.basicConfig(
     level=logging.INFO,
@@ -25,13 +46,29 @@ ROOT_DIR = os.path.dirname(os.path.abspath(__file__))
 GRAPH_PATH = os.path.join(ROOT_DIR, "..", "data", "graph.json")
 FRONTEND_DIST = os.path.join(ROOT_DIR, "..", "frontend", "dist")
 
-app = FastAPI(title="OpenAtlas API", version="1.0.0")
+app = FastAPI(title="OpenAtlas API", version="1.0.0", lifespan=lifespan)
 
-@app.on_event("startup")
-def startup_event():
-    logger.info("Starting background feed worker...")
-    # Increased interval to 5 minutes to avoid Gemini API Rate Limits (Error 429)
-    start_background_worker(interval_seconds=300)
+# --- GLOBAL SYSTEM ROUTES ---
+@app.get("/api/health")
+def health_check():
+    return {"status": "ok", "timestamp": time.time()}
+
+@app.get("/api/status")
+def get_system_status():
+    return worker_status
+
+@app.post("/api/deploy")
+async def deploy_query(background_tasks: BackgroundTasks):
+    """Manually trigger a fresh news ingestion cycle."""
+    logger.info("Manual deployment triggered via API (POST).")
+    background_tasks.add_task(fetch_and_ingest)
+    return {"message": "Deployment initiated", "status": "processing"}
+
+@app.get("/api/deploy")
+def deploy_diag():
+    return {"status": "available", "method": "GET"}
+
+# --- BUSINESS LOGIC ROUTES ---
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,6 +85,11 @@ class ChatResponse(BaseModel):
     answer: str
     cited_nodes: list[str]
     context_nodes: list[dict]
+
+class MaterializeRequest(BaseModel):
+    source_id: str
+    content: str
+    domain: str = "Predictive"
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
@@ -101,8 +143,12 @@ def get_predict_branch(node_id: str) -> list[dict]:
     return predict_speculative_branches(node_id)
 
 @app.post("/api/materialize")
-def post_materialize(data: dict) -> dict:
-    return materialize_ghost_node(data)
+def post_materialize(req: MaterializeRequest) -> dict:
+    return materialize_ghost_node(req.model_dump())
+
+@app.get("/api/deep_dive/{node_id}")
+def get_deep_dive(node_id: str) -> dict:
+    return deep_dive_node(node_id)
 
 @app.get("/api/graph")
 def get_graph() -> list[dict]:
@@ -158,5 +204,12 @@ else:
 
 if __name__ == "__main__":
     import uvicorn
-    # 0.0.0.0 enables access from local network if needed
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    import traceback
+    try:
+        # 0.0.0.0 enables access from local network if needed
+        uvicorn.run(app, host="0.0.0.0", port=8000)
+    except Exception as e:
+        with open("startup_error.log", "w") as f:
+            f.write(traceback.format_exc())
+            f.write(f"\nError: {e}")
+        sys.exit(1)

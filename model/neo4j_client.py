@@ -17,7 +17,12 @@ class Neo4jClient:
             user = os.getenv("NEO4J_USER")
             password = os.getenv("NEO4J_PASSWORD")
             try:
-                cls._instance.driver = GraphDatabase.driver(uri, auth=(user, password))
+                cls._instance.driver = GraphDatabase.driver(
+                    uri, 
+                    auth=(user, password),
+                    connection_timeout=15.0,
+                    connection_acquisition_timeout=30.0
+                )
                 cls._instance.driver.verify_connectivity()
                 logger.info("Successfully connected to Neo4j.")
             except Exception as e:
@@ -37,8 +42,13 @@ class Neo4jClient:
             # Consume the result into a list while the session is open
             return list(session.run(query, parameters))
 
-    def init_vector_index(self, dimension=768):
+    def init_vector_index(self, dimension=None):
         """Create a vector index in Neo4j if it doesn't exist."""
+        if dimension is None:
+            # Default to 768 which is used by gemini-embedding-2-preview in model/llm.py
+            dimension = 768
+            
+        logger.info(f"Initializing Neo4j Vector Index with dimension: {dimension}")
         query = f"""
         CREATE VECTOR INDEX node_embeddings IF NOT EXISTS
         FOR (e:Event) ON (e.embedding)

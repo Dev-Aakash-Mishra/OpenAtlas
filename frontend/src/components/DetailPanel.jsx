@@ -1,4 +1,4 @@
-import './DetailPanel.css';
+import { useState } from 'react';
 
 export default function DetailPanel({ node, onClose, domainColor, onFollowThread, onPredictBranch, onMaterialize }) {
   const {
@@ -15,103 +15,139 @@ export default function DetailPanel({ node, onClose, domainColor, onFollowThread
     isGhost,
   } = node;
 
+  const [deepDive, setDeepDive] = useState(null);
+  const [loadingDeepDive, setLoadingDeepDive] = useState(false);
+
+  const handleDeepDive = () => {
+    setLoadingDeepDive(true);
+    fetch(`/api/deep_dive/${id}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'success') {
+          setDeepDive(data.analysis);
+        } else {
+          alert("Deep dive failed: " + data.message);
+        }
+      })
+      .catch(err => console.error("Deep dive error", err))
+      .finally(() => setLoadingDeepDive(false));
+  };
+
   return (
-    <div className="detail-panel">
-      <div className="detail-header">
-        <div className="detail-domain-row">
-          <span
-            className="detail-domain"
-            style={{ background: `${domainColor}20`, color: domainColor, borderColor: `${domainColor}40` }}
-          >
-            {domain}
-          </span>
-          {speculation && (
-            <span className="detail-spec">
-              ⚡ Speculative — {Math.round((confidence || 0) * 100)}% confidence
-            </span>
+    <div className="absolute top-6 right-6 z-50 w-80 bg-surface-container-high/90 backdrop-blur-2xl border border-outline-variant/15 rounded-2xl shadow-2xl p-6 animate-in slide-in-from-right-8 duration-300 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin scrollbar-thumb-outline-variant/30 scrollbar-track-transparent">
+      <div className="flex items-center justify-between mb-4">
+        <span className="text-[10px] font-headline font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wider">
+          {isGhost ? 'Speculative Entity' : 'Entity Selected'}
+        </span>
+        <button onClick={onClose} className="hover:text-primary transition-colors">
+          <span className="material-symbols-outlined text-on-surface-variant text-sm">close</span>
+        </button>
+      </div>
+
+      <h2 className="text-xl font-headline font-bold mb-2 leading-tight">{content?.split('.')[0]}</h2>
+      <p className="text-xs text-on-surface-variant leading-relaxed mb-6">
+        {content}
+      </p>
+
+      {deepDive && (
+        <div className="mb-6 relative group">
+          <div className="absolute -inset-1 bg-gradient-to-r from-primary/30 to-secondary/30 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
+          <div className="relative p-5 bg-surface-container-highest/90 backdrop-blur-xl border border-primary/20 rounded-2xl shadow-xl overflow-hidden">
+             {/* Quantum Circuit Mesh Background */}
+             <div className="absolute inset-0 opacity-5 pointer-events-none">
+                <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <pattern id="mesh" width="20" height="20" patternUnits="userSpaceOnUse">
+                      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="currentColor" strokeWidth="0.5"/>
+                    </pattern>
+                  </defs>
+                  <rect width="100%" height="100%" fill="url(#mesh)" />
+                </svg>
+             </div>
+
+             <div className="flex items-center gap-2 mb-3">
+                <span className="material-symbols-outlined text-primary text-sm animate-spin-slow">psychology</span>
+                <h5 className="text-[10px] font-headline text-primary uppercase tracking-[0.2em] font-bold">Quantum Intelligence Deep-Dive</h5>
+             </div>
+             <p className="text-xs leading-relaxed text-[#ecedf6] font-medium italic relative z-10">"{deepDive}"</p>
+             
+             <div className="mt-4 flex justify-end">
+                <div className="h-0.5 w-12 bg-gradient-to-r from-transparent to-primary/40 rounded-full"></div>
+             </div>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-6">
+        <div>
+          <h5 className="text-[10px] font-headline text-on-surface-variant uppercase tracking-widest mb-3">Key Elements</h5>
+          <div className="flex flex-wrap gap-2">
+            {(key_elements || []).map((k) => (
+              <span key={k} className="text-[10px] px-2 py-1 bg-surface-container-highest rounded border border-outline-variant/10 text-on-surface/80">
+                {k}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <h5 className="text-[10px] font-headline text-on-surface-variant uppercase tracking-widest mb-3">System Context</h5>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="p-3 bg-surface-container-highest rounded-xl border border-outline-variant/5">
+              <span className="text-[8px] uppercase tracking-tighter text-on-surface-variant block mb-1">Outgoing</span>
+              <span className="text-lg font-headline font-bold text-primary">{next?.length || 0}</span>
+            </div>
+            <div className="p-3 bg-surface-container-highest rounded-xl border border-outline-variant/5">
+              <span className="text-[8px] uppercase tracking-tighter text-on-surface-variant block mb-1">Incoming</span>
+              <span className="text-lg font-headline font-bold text-secondary">{prev?.length || 0}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {isGhost ? (
+            <button 
+              className="w-full bg-primary text-on-primary font-bold py-3 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 text-xs shadow-lg shadow-primary/20"
+              onClick={() => onMaterialize(node)}
+            >
+              <span className="material-symbols-outlined text-sm">auto_awesome</span>
+              Materialize to Graph
+            </button>
+          ) : (
+            <>
+              <button 
+                className="w-full bg-primary text-on-primary font-bold py-3 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 text-xs shadow-lg shadow-primary/20"
+                onClick={() => onFollowThread(id)}
+              >
+                <span className="material-symbols-outlined text-sm">account_tree</span>
+                Follow Narrative Thread
+              </button>
+              <button 
+                className="w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface font-bold py-3 rounded-xl hover:bg-surface-variant transition-all flex items-center justify-center gap-2 text-xs"
+                onClick={() => onPredictBranch(id)}
+              >
+                <span className="material-symbols-outlined text-sm">online_prediction</span>
+                Predict Consequences
+              </button>
+            </>
           )}
-        </div>
-        <button className="detail-close" onClick={onClose}>✕</button>
-      </div>
-
-      <p className="detail-content">{content}</p>
-
-      <div className="detail-section">
-        <h3 className="detail-section-title">Key Elements</h3>
-        <div className="detail-tags">
-          {(key_elements || []).map((k) => (
-            <span key={k} className="detail-tag" style={{ borderColor: `${domainColor}30` }}>
-              {k}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <div className="detail-section">
-        <h3 className="detail-section-title">Connections</h3>
-        <div className="detail-connections">
-          <div className="detail-conn">
-            <span className="detail-conn-label">Outgoing</span>
-            <span className="detail-conn-value" style={{ color: domainColor }}>
-              {next?.length || 0}
-            </span>
-          </div>
-          <div className="detail-conn">
-            <span className="detail-conn-label">Incoming</span>
-            <span className="detail-conn-value" style={{ color: domainColor }}>
-              {prev?.length || 0}
-            </span>
-          </div>
-        </div>
-        
-        {isGhost ? (
+          
           <button 
-            className="detail-thread-btn"
-            onClick={() => onMaterialize(node)}
-            style={{ width: '100%', marginTop: '12px', padding: '10px', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+            className="w-full py-2 text-[10px] text-primary hover:text-primary-dim transition-colors flex items-center justify-center gap-1 font-bold tracking-tight"
+            onClick={handleDeepDive}
+            disabled={loadingDeepDive}
           >
-            ✨ Materialize to Graph
+            <span className="material-symbols-outlined text-xs">{loadingDeepDive ? 'hourglass_empty' : 'psychology'}</span>
+            {loadingDeepDive ? 'Analyzing Patterns...' : 'Quantum Analysis Deep Dive'}
           </button>
-        ) : (
-          <>
-            <button 
-              className="detail-thread-btn"
-              onClick={() => onFollowThread(id)}
-              style={{ width: '100%', marginTop: '12px', padding: '10px', background: domainColor, color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              🧶 Follow Narrative Thread
-            </button>
-
-            <button 
-              className="detail-thread-btn"
-              onClick={() => onPredictBranch(id)}
-              style={{ width: '100%', marginTop: '8px', padding: '10px', background: 'transparent', color: domainColor, border: `1px solid ${domainColor}80`, borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-            >
-              🔮 Predict Future Consequences
-            </button>
-          </>
-        )}
+        </div>
       </div>
 
-      <div className="detail-meta">
-        <span className="detail-meta-item">
-          {new Date(timestamp).toLocaleDateString('en-US', {
-            year: 'numeric', month: 'short', day: 'numeric',
-            hour: '2-digit', minute: '2-digit'
-          })}
-        </span>
-        <span className="detail-meta-item detail-id" title={id}>
-          {id.slice(0, 8)}…
-        </span>
+      <div className="mt-8 pt-4 border-t border-outline-variant/10 flex items-center justify-between text-[9px] text-on-surface-variant font-medium">
+        <span>{new Date(timestamp).toLocaleDateString()}</span>
         {source_url && (
-          <a 
-            href={source_url} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="detail-source-link"
-            style={{ color: domainColor, marginLeft: 'auto', textDecoration: 'none', fontWeight: '500' }}
-          >
-            Read Source ↗
+          <a href={source_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-0.5">
+            Original Source <span className="material-symbols-outlined text-[10px]">open_in_new</span>
           </a>
         )}
       </div>
