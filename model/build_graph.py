@@ -23,6 +23,7 @@ class Node(BaseModel):
     embedding: Optional[List[float]] = None
     source_url: Optional[str] = None
     sentiment: Optional[float] = 0.0
+    region: str = "global"
 
     def __init__(self, **data):
         super().__init__(**data)

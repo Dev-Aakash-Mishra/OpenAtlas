@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 # ── Gemini (primary) ─────────────────────────────────────────────────────────
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-MODEL  = "gemini-2.0-flash"
+MODEL  = "gemini-2.5-flash"
 
 # ── OpenRouter (fallback) ─────────────────────────────────────────────────────
 _or_key = os.getenv("OPENROUTER_API_KEY", "")

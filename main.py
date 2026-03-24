@@ -46,21 +46,26 @@ def get_tokens(text: str) -> set[str]:
     return {t for t in tokens if len(t) > 2}
 
 
-def is_article_duplicate(article_url: str, article_text: str, article_title: str, existing_nodes: list[Node]) -> bool:
+def is_article_duplicate(article_url: str, article_text: str, article_title: str, existing_nodes: list[Node], region: str = "global") -> bool:
     if not existing_nodes:
+        return False
+
+    # Filter existing nodes to ONLY check for duplicates in the SAME region
+    # This allows similar stories to exist in different regional views if desired
+    regional_nodes = [n for n in existing_nodes if n.region == region]
+    if not regional_nodes:
         return False
 
     # 1. Quick URL Check
     if article_url:
-        for ex in existing_nodes:
+        for ex in regional_nodes:
             if ex.source_url == article_url:
                 return True
 
     # ✅ FIX 5: Compare title tokens against existing node title/first-sentence
-    # instead of full content to avoid apples-vs-oranges Jaccard mismatch
     art_tokens = get_tokens(article_title)
     max_sim = 0
-    for ex in existing_nodes:
+    for ex in regional_nodes:
         # Use the first sentence of content as a proxy for the headline
         ex_headline = ex.content.split(".")[0] if ex.content else ""
         ex_tokens = get_tokens(ex_headline)
@@ -162,7 +167,8 @@ def _batch_save_to_neo4j(nodes: list[Node]) -> None:
     query = """
     UNWIND $records AS r
     MERGE (e:Event {id: r.id})
-    SET e.content      = r.content,
+    SET e.id           = r.id,
+        e.content      = r.content,
         e.domain       = r.domain,
         e.key_elements = r.key_elements,
         e.speculation  = r.speculation,
@@ -174,6 +180,7 @@ def _batch_save_to_neo4j(nodes: list[Node]) -> None:
         e.lng          = r.lng,
         e.source_url   = r.source_url,
         e.sentiment    = r.sentiment,
+        e.region       = r.region,
         e.timestamp    = datetime(r.timestamp),
         e.embedding    = r.embedding
     """
@@ -181,7 +188,7 @@ def _batch_save_to_neo4j(nodes: list[Node]) -> None:
     logger.info("✅ Batch saved %d nodes to Neo4j.", len(nodes))
 
 
-def create_nodes(cache_path: str) -> list[Node]:
+def create_nodes(cache_path: str, region: str = "global") -> list[Node]:
     os.makedirs(os.path.dirname(GRAPH_PATH), exist_ok=True)
 
     articles = _parse_cache_file(cache_path)
@@ -201,7 +208,7 @@ def create_nodes(cache_path: str) -> list[Node]:
 
     valid_articles = []
     for art in articles:
-        if is_article_duplicate(art.get('url'), art['body'][:1200], art['title'], existing_nodes):
+        if is_article_duplicate(art.get('url'), art['body'][:1200], art['title'], existing_nodes, region=region):
             logger.info("🛑 Dropped redundant/duplicate article: %s", art['title'])
         else:
             valid_articles.append(art)
@@ -251,6 +258,7 @@ def create_nodes(cache_path: str) -> list[Node]:
                     lng=item.get("lng"),
                     sentiment=item.get("sentiment", 0.0),  # ✅ FIX 4: sentiment now passed
                     reference=cache_path,
+                    region=region,
                 ))
 
             time.sleep(2)  # ✅ FIX 6: import already at top
@@ -350,10 +358,17 @@ def _link_new_nodes(new_nodes: list[Node]) -> None:
         if not node.embedding:
             continue
 
+        # Increased threshold from 0.75 to 0.82 and added keyword check hint
         search_query = """
-        CALL db.index.vector.queryNodes('node_embeddings', 6, $vector)
+        CALL db.index.vector.queryNodes('node_embeddings', 10, $vector)
         YIELD node, score
-        WHERE node.id <> $current_id AND score > 0.75
+        WHERE node.id <> $current_id AND score > 0.82
+        
+        // Ensure some keyword overlap to prevent false semantic matches
+        WITH node, score
+        MATCH (current:Event {id: $current_id})
+        WHERE any(k IN node.key_elements WHERE k IN current.key_elements)
+        
         RETURN node.id as neighbor_id, score
         """
         try:

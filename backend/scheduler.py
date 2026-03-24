@@ -5,6 +5,7 @@ import threading
 import feedparser
 import logging
 import re
+import requests
 
 # Ensure the root directory is in sys.path for internal module imports
 root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -44,6 +45,46 @@ FEEDS = [
     "https://www.defensenews.com/arc/outboundfeeds/rss/category/global/",
 ]
 
+INDIA_FEEDS = [
+    # Times of India
+    "https://timesofindia.indiatimes.com/rssfeedstopstories.cms",
+    "https://timesofindia.indiatimes.com/rssfeeds/1221656.cms",  # TOI India
+
+    # NDTV
+    "https://feeds.feedburner.com/ndtvnews-top-stories",
+    "https://feeds.feedburner.com/ndtvnews-india-news",
+
+    # The Hindu
+    "https://www.thehindu.com/news/national/feeder/default.rss",
+    "https://www.thehindu.com/feeder/default.rss",              # All sections
+
+    # Hindustan Times
+    "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml",
+    "https://www.hindustantimes.com/feeds/rss/top-news/rssfeed.xml",
+
+    # Indian Express
+    "https://indianexpress.com/feed/",
+    "https://indianexpress.com/section/india/feed/",
+
+    # India Today
+    "https://www.indiatoday.in/rss/home",
+    "https://www.indiatoday.in/rss/1206513",                    # India Today India
+
+    # Mint (Business/Finance)
+    "https://www.livemint.com/rss/news",
+
+    # Economic Times
+    "https://economictimes.indiatimes.com/rssfeedsdefault.cms",
+    "https://economictimes.indiatimes.com/news/india/rssfeeds/1068164.cms",
+
+    # Wire
+
+    # ANI News
+
+    # Firstpost (your original)
+    "https://www.firstpost.com/commonfeeds/v1/mfp/rss/india.xml",                  # Updated path
+]
+
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "model", ".cache")
 global_seen_links = set()
 
@@ -54,11 +95,14 @@ worker_status = {
     "error": None
 }
 
-def fetch_and_ingest():
+def fetch_and_ingest(region="global"):
     global global_seen_links, worker_status
     
+    feeds_to_use = FEEDS if region == "global" else INDIA_FEEDS
+    display_name = "Global" if region == "global" else "India"
+    
     worker_status["state"] = "fetching"
-    worker_status["message"] = "Connecting to global news feeds..."
+    worker_status["message"] = f"Connecting to {display_name} news feeds..."
     worker_status["last_run"] = time.time()
     worker_status["error"] = None
     
@@ -67,9 +111,19 @@ def fetch_and_ingest():
     cache_path = os.path.join(CACHE_DIR, "live_feed_tmp.txt")
     
     blocks = []
-    for url in FEEDS:
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    
+    for url in feeds_to_use:
         try:
-            feed = feedparser.parse(url)
+            # Use requests to bypass bot-detection on many Indian news sites
+            response = requests.get(url, headers=headers, timeout=15)
+            if response.status_code != 200:
+                logger.warning("Failed to fetch feed %s: HTTP %s", url, response.status_code)
+                continue
+                
+            feed = feedparser.parse(response.content)
             for entry in feed.entries[:5]: # Top 5 from each feed
                 link = entry.get("link", "")
                 if link in global_seen_links:
@@ -112,10 +166,10 @@ def fetch_and_ingest():
         with open(cache_path, "w", encoding="utf-8") as f:
             f.write("\n".join(blocks))
             
-        logger.info(f"Wrote {len(blocks)} articles to temporary cache. Generating nodes via LLM...")
+        logger.info(f"Wrote {len(blocks)} articles to temporary cache. Generating nodes via LLM for region: {region}...")
         try:
             from main import create_nodes
-            create_nodes(cache_path)
+            create_nodes(cache_path, region=region)
             worker_status["state"] = "idle"
             worker_status["message"] = "Successfully updated intelligence graph."
             logger.info("✅ Live feed ingestion and graph update successful.")
@@ -140,7 +194,12 @@ def start_background_worker(interval_seconds=60):
         time.sleep(5)
         cycles = 0
         while True:
-            fetch_and_ingest()
+            # 1. Fetch Global News
+            fetch_and_ingest(region="global")
+            time.sleep(10) # Small breather
+
+            # 2. Fetch India News
+            fetch_and_ingest(region="India")
             
             # Run consolidation every 60 cycles (e.g. 1 hour if interval is 60s)
             cycles += 1

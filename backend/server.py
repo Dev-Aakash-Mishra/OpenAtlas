@@ -8,6 +8,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 import time
+import requests
 
 # Ensure the root directory is in sys.path for internal module imports
 root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -58,11 +59,11 @@ def get_system_status():
     return worker_status
 
 @app.post("/api/deploy")
-async def deploy_query(background_tasks: BackgroundTasks):
+async def deploy_query(background_tasks: BackgroundTasks, region: str = "global"):
     """Manually trigger a fresh news ingestion cycle."""
-    logger.info("Manual deployment triggered via API (POST).")
-    background_tasks.add_task(fetch_and_ingest)
-    return {"message": "Deployment initiated", "status": "processing"}
+    logger.info(f"Manual deployment triggered via API (POST) for region: {region}.")
+    background_tasks.add_task(fetch_and_ingest, region)
+    return {"message": f"Deployment initiated for {region}", "status": "processing"}
 
 @app.get("/api/deploy")
 def deploy_diag():
@@ -151,17 +152,18 @@ def get_deep_dive(node_id: str) -> dict:
     return deep_dive_node(node_id)
 
 @app.get("/api/graph")
-def get_graph() -> list[dict]:
-    """Fetch latest 150 nodes and their relationships from Neo4j."""
+def get_graph(region: str = "global") -> list[dict]:
+    """Fetch latest 150 nodes and their relationships from Neo4j, filtered by region."""
     cypher = """
     MATCH (n:Event)
+    WHERE (n.region = $region) OR ($region = 'global' AND n.region IS NULL)
     OPTIONAL MATCH (n)-[:CONNECTED_TO]->(m:Event)
     WITH n, collect(m.id) as next_ids
     ORDER BY n.timestamp DESC
     LIMIT 150
     RETURN n, next_ids
     """
-    result = neo4j_client.execute_query(cypher)
+    result = neo4j_client.execute_query(cypher, {"region": region})
     
     nodes_data = []
     if result:

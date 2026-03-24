@@ -129,6 +129,7 @@ function GraphView() {
   const [nodeLimit, setNodeLimit] = useState(() => {
     return parseInt(localStorage.getItem('openatlas_node_limit')) || 50;
   });
+  const [region, setRegion] = useState('global');
 
   useEffect(() => {
     localStorage.setItem('openatlas_node_limit', nodeLimit);
@@ -165,14 +166,14 @@ function GraphView() {
       .then(res => setHealthStatus(res.ok ? 'ok' : 'error'))
       .catch(() => setHealthStatus('error'));
 
-    fetch(`${API_BASE}/api/graph`)
+    fetch(`${API_BASE}/api/graph?region=${region}`)
       .then(async (r) => {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       })
       .then((data) => {
         if (!Array.isArray(data)) return;
-        setGraphData(prev => data.length !== prev.length ? data : prev);
+        setGraphData(prev => JSON.stringify(data) !== JSON.stringify(prev) ? data : prev);
       })
       .catch(() => {
         if (!isDeploying) {
@@ -187,12 +188,12 @@ function GraphView() {
       .finally(() => {
         // No longer managing isDeploying globally here
       });
-  }, []);
+  }, [region]);
 
   const handleDeployQuery = async () => {
     setIsDeploying(true);
-    const url = `${API_BASE}/api/deploy`;
-    console.log(`Triggering deployment at: ${url}`);
+    const url = `${API_BASE}/api/deploy?region=${region}`;
+    console.log(`Triggering deployment for ${region} at: ${url}`);
     try {
       // Trigger backend ingestion
       const res = await fetch(url, { method: 'POST' });
@@ -210,14 +211,24 @@ function GraphView() {
     fetchGraph();
     const interval = setInterval(fetchGraph, 30000); // 30s refresh during active session
     return () => clearInterval(interval);
-  }, [fetchGraph]);
+  }, [fetchGraph, region]);
 
   const filteredNodes = useMemo(() => {
     let base = [...graphData, ...ghostNodes];
     
-    // 1. Domain Filter
+    // 1. Domain Filter (Inclusive: Show matching nodes + their direct neighbors)
     if (filterDomain !== 'all') {
-      base = base.filter(n => n.domain === filterDomain || n.isGhost);
+      const matchingIds = new Set(base.filter(n => n.domain === filterDomain).map(n => n.id));
+      const neighborIds = new Set();
+      
+      base.forEach(n => {
+        if (matchingIds.has(n.id)) {
+          (n.next || []).forEach(id => neighborIds.add(id));
+          (n.prev || []).forEach(id => neighborIds.add(id));
+        }
+      });
+      
+      base = base.filter(n => matchingIds.has(n.id) || neighborIds.has(n.id) || n.isGhost);
     }
     
     // 2. Pin Filter
@@ -326,7 +337,17 @@ function GraphView() {
       const searchDimmed = targetQuery && !n.data.isSearchMatch;
       const searchGlow = targetQuery && n.data.isSearchMatch;
 
-      const baseOpacity = isDimmed || searchDimmed ? (isGhostNode ? 0.05 : 0.2) : (isGhostNode ? 0.4 : 1);
+      // New: Dim and blur neighbors if they don't match the current domain filter
+      const matchesFilter = filterDomain === 'all' || n.data?.domain === filterDomain;
+      const isNeighborDimmed = filterDomain !== 'all' && !matchesFilter && !isFocused;
+
+      let baseOpacity = isDimmed || searchDimmed || isNeighborDimmed ? (isGhostNode ? 0.05 : 0.2) : (isGhostNode ? 0.4 : 1);
+      
+      // Apply extra dimming for neighbors that are not currently focused
+      if (isNeighborDimmed && !isDimmed && !searchDimmed) {
+        baseOpacity = 0.12;
+      }
+
       const isStrongGlow = isFocused || searchGlow || (narrativeThread && isThreadNode);
 
       return {
@@ -334,7 +355,9 @@ function GraphView() {
         style: {
           ...n.style,
           opacity: baseOpacity,
-          filter: isStrongGlow ? `drop-shadow(0 0 22px ${isThreadNode ? '#fbbf24' : (isGhostNode ? '#8b5cf6' : 'rgba(255,255,255,0.6)')})` : 'none',
+          filter: isStrongGlow 
+            ? `drop-shadow(0 0 22px ${isThreadNode ? '#fbbf24' : (isGhostNode ? '#8b5cf6' : 'rgba(255,255,255,0.6)')})` 
+            : (isNeighborDimmed ? 'blur(4px)' : 'none'),
           borderWidth: isThreadNode ? '4px' : n.style.borderWidth,
           borderStyle: isGhostNode ? 'dashed' : 'solid',
           borderColor: isGhostNode ? '#8b5cf6' : n.style.borderColor,
@@ -515,6 +538,26 @@ function GraphView() {
             <span className="material-symbols-outlined">inventory_2</span>
             <span>Archive</span>
           </button>
+
+          <div className="mt-6 px-6">
+            <h4 className="text-[10px] font-headline uppercase tracking-widest text-[#9fa7ff] mb-4 opacity-50">Local Intelligence</h4>
+            <div className="space-y-2">
+              <button 
+                className={`flex items-center w-full gap-3 px-4 py-2 rounded-xl transition-all duration-200 ${region === 'global' ? 'bg-primary/20 text-primary shadow-lg' : 'text-[#ecedf6]/40 hover:text-[#ecedf6] hover:bg-surface-container-highest/30'}`}
+                onClick={() => setRegion('global')}
+              >
+                <span className="material-symbols-outlined text-sm">public</span>
+                <span className="text-xs">Global Feed</span>
+              </button>
+              <button 
+                className={`flex items-center w-full gap-3 px-4 py-2 rounded-xl transition-all duration-200 ${region === 'India' ? 'bg-secondary/20 text-secondary shadow-lg' : 'text-[#ecedf6]/40 hover:text-[#ecedf6] hover:bg-surface-container-highest/30'}`}
+                onClick={() => setRegion('India')}
+              >
+                <span className="material-symbols-outlined text-sm">location_on</span>
+                <span className="text-xs">India Events</span>
+              </button>
+            </div>
+          </div>
         </nav>
 
         <div className="px-4 mt-auto space-y-4">

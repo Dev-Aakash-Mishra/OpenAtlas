@@ -21,7 +21,9 @@ class Neo4jClient:
                     uri, 
                     auth=(user, password),
                     connection_timeout=15.0,
-                    connection_acquisition_timeout=30.0
+                    connection_acquisition_timeout=30.0,
+                    max_connection_lifetime=200,  # Prevent defunct connection errors on Aura
+                    keep_alive=True
                 )
                 cls._instance.driver.verify_connectivity()
                 logger.info("Successfully connected to Neo4j.")
