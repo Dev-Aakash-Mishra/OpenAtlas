@@ -178,7 +178,12 @@ def fetch_rss(query: str = "world", limit: int = 10) -> list[dict]:
         "NYTimes":    "https://rss.nytimes.com/services/xml/rss/nyt/World.xml",
         "DW":         "https://rss.dw.com/xml/rss-en-world",
         "France24":   "https://www.france24.com/en/rss",
+        # Expanded Indian Sources
         "IndiaToday": "https://www.indiatoday.in/rss/home",
+        "NDTV":       "https://feeds.feedburner.com/ndtvnews-latest",
+        "TheHindu":   "https://www.thehindu.com/news/national/feeder/default.rss",
+        "Mint":       "https://www.livemint.com/rss/news",
+        "ET":         "https://economictimes.indiatimes.com/rssfeedsdefault.cms",
     }
     articles: list[dict] = []
     for name, url in feeds.items():
