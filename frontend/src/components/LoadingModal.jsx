@@ -5,14 +5,14 @@ const LoadingModal = ({ isOpen, onClose, apiBase = '' }) => {
   const [logIndex, setLogIndex] = useState(0);
 
   const logs = [
-    "Synthesizing knowledge vectors...",
-    "Correlating global event patterns...",
-    "Establishing secure feed link...",
-    "Lines are making your feed...",
-    "AI performing multi-perspective extraction...",
-    "Mapping temporal narratives...",
-    "Analyzing semantic clusters...",
-    "Finalizing graph consistency..."
+    "Analyzing latest Indian and global news...",
+    "Correlating regional event patterns...",
+    "Updating the Bharat intelligence map...",
+    "Processing multi-language news feeds...",
+    "Extracting local relevance and context...",
+    "Mapping narrative threads...",
+    "Analyzing across states and districts...",
+    "Finalizing knowledge graph..."
   ];
 
   useEffect(() => {

@@ -16,28 +16,35 @@ logger = logging.getLogger(__name__)
 
 GRAPH_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "graph.json")
 
-SYSTEM_PROMPT = """You are a geopolitical and world-events analyst.
-You will receive one or more raw news articles.
+SYSTEM_PROMPT = """You are a specialized News Analyst focusing on the Indian subcontinent and global affairs.
+You will receive raw news articles from various sources.
+
 For EACH distinct news event, produce a JSON object with these fields:
 
-- "content": str — a clean 3-4 sentence factual summary of the event.
-- "key_elements": list[str] — lowercase entities and topics.
-- "domain": str — one of: "geopolitics", "economics", "technology", "military", "environment", "society", "science", "culture", "sports", "health"
-- "speculation": bool — true ONLY if the article is speculative/opinion.
-- "confidence": float or null — only set (0.0-1.0) if speculation is true, null otherwise.
-- "trust_score": int — 0-100 rating based on factual sourcing vs sensationalism.
-- "bias_warning": bool — true if highly biased or emotionally charged.
-- "image_url": str or null — pass the parsed Image URL exactly from the article if present.
-- "source_url": str — pass the EXACT URL of the article.
-- "lat": float or null — approximate latitude if a specific city/country is the primary target of the event.
-- "lng": float or null — approximate longitude if a specific city/country is the primary target.
-- "sentiment": float — a rating from -1.0 (negative/conflict) to 1.0 (positive/peaceful). Use 0.0 for neutral.
+- "content": str — a 3-4 sentence factual summary in English.
+  - ALWAYS include a "Local Impact" sentence explaining how this affects an Indian citizen (e.g., "This leads to higher prices for essentials in Mumbai").
+- "key_elements": list[str] — lowercase entities, topics, and locations.
+  - MANDATORY: Include the Indian State and District if applicable.
+- "domain": str — one of: "geopolitics", "economics", "technology", "military", "environment", "society", "science", "culture", "sports", "health", "development", "agriculture", "education", "entertainment"
+- "speculation": bool — true ONLY if the article is opinion/speculative.
+- "confidence": float or null — confidence (0.0-1.0) if speculative.
+- "trust_score": int — 0-100 factual rating.
+- "bias_warning": bool — true if highly partisan or sensationalist.
+- "image_url": str or null — pass the parsed Image URL exactly if present.
+- "source_url": str — the exact article URL.
+- "lat": float or null — approximate latitude.
+- "lng": float or null — approximate longitude.
+- "sentiment": float — -1.0 (conflict) to 1.0 (peaceful).
+- "state": str or null — Indian State (e.g., "Maharashtra").
+- "district": str or null — Indian District/City (e.g., "Pune").
+- "source_language": str — the original language (e.g., "English", "Hindi").
+- "publisher": str or null — e.g., "NDTV", "Dainik Bhaskar".
 
 RULES:
-- Return a JSON array, one object per distinct event.
-- EXTREMELY IMPORTANT: If multiple articles provide information on the SAME event, merge them into ONE object with the most comprehensive content.
-- SKIP articles that are not relevant or old.
-- Do NOT include the fields: id, prev, next, reference, timestamp.
+- Return a JSON array.
+- MERGE articles covering the same event.
+- INDIAN CONTEXT: Explicitly link global events to India where possible (e.g., "US rate hikes typically lead to a weaker Rupee").
+- ALL summaries must be in English.
 - Return ONLY valid JSON."""
 
 
@@ -137,6 +144,8 @@ def _parse_cache_file(cache_path: str) -> list[dict]:
                 art["date"] = line.replace("DATE:", "").strip()
             elif line.startswith("IMAGE_URL:"):
                 art["image_url"] = line.replace("IMAGE_URL:", "").strip()
+            elif line.startswith("LANGUAGE:"):
+                art["lang"] = line.replace("LANGUAGE:", "").strip()
             elif line.startswith("BODY:"):
                 current_section = "BODY"
             elif current_section == "BODY":
@@ -181,6 +190,10 @@ def _batch_save_to_neo4j(nodes: list[Node]) -> None:
         e.source_url   = r.source_url,
         e.sentiment    = r.sentiment,
         e.region       = r.region,
+        e.state        = r.state,
+        e.district     = r.district,
+        e.source_language = r.source_language,
+        e.publisher    = r.publisher,
         e.timestamp    = datetime(r.timestamp),
         e.embedding    = r.embedding
     """
@@ -256,9 +269,13 @@ def create_nodes(cache_path: str, region: str = "global") -> list[Node]:
                     source_url=item.get("source_url"),
                     lat=item.get("lat"),
                     lng=item.get("lng"),
-                    sentiment=item.get("sentiment", 0.0),  # ✅ FIX 4: sentiment now passed
+                    sentiment=item.get("sentiment", 0.0),
                     reference=cache_path,
                     region=region,
+                    state=item.get("state"),
+                    district=item.get("district"),
+                    source_language=item.get("source_language", "English"),
+                    publisher=item.get("publisher"),
                 ))
 
             time.sleep(2)  # ✅ FIX 6: import already at top

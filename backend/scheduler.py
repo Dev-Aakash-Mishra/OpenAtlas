@@ -18,8 +18,8 @@ logger = logging.getLogger(__name__)
 
 FEEDS = [
     # World News
-    "https://feeds.bbci.co.uk/news/world/rss.xml",          # BBC (https fix)
-    "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", # NYT World (replaces CNBC general)
+    "https://feeds.bbci.co.uk/news/world/rss.xml",          # BBC
+    "https://rss.nytimes.com/services/xml/rss/nyt/World.xml", # NYT World
 
     # Business / Finance
     "https://feeds.content.dowjones.io/public/rss/mw_realtimeheadlines",  # MarketWatch
@@ -27,22 +27,27 @@ FEEDS = [
 
     # Technology
     "https://techcrunch.com/feed/",
-    "https://www.wired.com/feed/rss",                        # fixed domain
+    "https://www.wired.com/feed/rss",
 
     # Science
     "https://www.sciencedaily.com/rss/all.xml",
-    "https://www.newscientist.com/feed/home/",               # adds New Scientist
+    "https://www.newscientist.com/feed/home/",
 
     # Health / Medical
     "https://www.medicalnewstoday.com/feed/rss/articles",
-    "https://feeds.webmd.com/rss/rss.aspx/WebMD-News",      # adds WebMD
+    "https://feeds.webmd.com/rss/rss.aspx/WebMD-News",
 
     # Environment
     "https://grist.org/feed/",
-    "https://www.theguardian.com/environment/rss",           # adds Guardian Env.
+    "https://www.theguardian.com/environment/rss",
 
     # Defense / Geopolitics
     "https://www.defensenews.com/arc/outboundfeeds/rss/category/global/",
+
+    # === Indian Sources on the Global Stage ===
+    "https://www.thehindu.com/news/international/feeder/default.rss",  # The Hindu International
+    "https://www.livemint.com/rss/economy",                            # Mint Economy
+    "https://www.business-standard.com/rss/world-news-106.rss",       # B-Standard World
 ]
 
 INDIA_FEEDS = [
@@ -51,24 +56,26 @@ INDIA_FEEDS = [
     "https://timesofindia.indiatimes.com/rssfeeds/1221656.cms",  # TOI India
 
     # NDTV
-    "https://feeds.feedburner.com/ndtvnews-top-stories",
+    "https://feeds.feedburner.com/ndtvnews-latest",
     "https://feeds.feedburner.com/ndtvnews-india-news",
+    "https://feeds.feedburner.com/ndtvnews-trending-news",
+    "https://feeds.feedburner.com/ndtvnews-top-stories",
 
     # The Hindu
     "https://www.thehindu.com/news/national/feeder/default.rss",
-    "https://www.thehindu.com/feeder/default.rss",              # All sections
+    "https://www.thehindu.com/sci-tech/feeder/default.rss",
+    "https://www.thehindu.com/sport/feeder/default.rss",
+    "https://www.thehindu.com/business/feeder/default.rss",
 
     # Hindustan Times
     "https://www.hindustantimes.com/feeds/rss/india-news/rssfeed.xml",
-    "https://www.hindustantimes.com/feeds/rss/top-news/rssfeed.xml",
 
     # Indian Express
-    "https://indianexpress.com/feed/",
     "https://indianexpress.com/section/india/feed/",
 
     # India Today
     "https://www.indiatoday.in/rss/home",
-    "https://www.indiatoday.in/rss/1206513",                    # India Today India
+    "https://www.indiatoday.in/rss/1206513",
 
     # Mint (Business/Finance)
     "https://www.livemint.com/rss/news",
@@ -77,12 +84,66 @@ INDIA_FEEDS = [
     "https://economictimes.indiatimes.com/rssfeedsdefault.cms",
     "https://economictimes.indiatimes.com/news/india/rssfeeds/1068164.cms",
 
-    # Wire
+    # Regional / Multi-State
+    "https://www.firstpost.com/commonfeeds/v1/mfp/rss/india.xml",
 
-    # ANI News
+    # === Cricket / IPL (India's Primary Sport) ===
+    "https://www.espncricinfo.com/rss/content/story/feeds/0.xml",  # ESPNcricinfo
+    "https://feeds.feedburner.com/ndtvnews-cric-news",             # NDTV Cricket
+    "https://www.cricbuzz.com/cb-rss/cb-top",                      # Cricbuzz Top Stories
+    "https://www.cricbuzz.com/cb-rss/cb-news",                     # Cricbuzz News
 
-    # Firstpost (your original)
-    "https://www.firstpost.com/commonfeeds/v1/mfp/rss/india.xml",                  # Updated path
+    # === Entertainment / Bollywood / OTT ===
+    "https://timesofindia.indiatimes.com/rssfeeds/1081479906.cms",  # TOI Entertainment
+    "https://www.indiatoday.in/rss/1207081",                        # India Today Entertainment
+    "https://www.bollywoodhungama.com/rss/news.xml",                # Bollywood Hungama
+    "https://www.filmfare.com/feeds/filmfare-news.xml",             # Filmfare
+
+    # === Startup / Tech India ===
+    "https://yourstory.com/rss",                                    # YourStory
+    "https://inc42.com/feed/",                                      # Inc42
+
+    # === Agriculture / Rural India ===
+    "https://krishijagran.com/rss-feed/",                           # Krishi Jagran
+    "https://www.downtoearth.org.in/rss/agriculture",               # Down To Earth Agriculture
+
+    # === Education / Exams (UPSC, JEE, NEET) ===
+    "https://timesofindia.indiatimes.com/rssfeeds/913168846.cms",   # TOI Education
+    "https://www.indiatoday.in/rss/1206577",                        # India Today Education
+
+    # === Hindi Language Feeds ===
+    "https://www.amarujala.com/rss/breaking-news.xml",
+    "https://www.amarujala.com/rss/events-coverage.xml",
+    "https://www.amarujala.com/rss/uttar-pradesh.xml",
+    "https://www.amarujala.com/rss/uttarakhand.xml",
+    "https://www.amarujala.com/rss/gujarat.xml",
+    "https://www.amarujala.com/rss/chhattisgarh.xml",
+    "https://www.amarujala.com/rss/jammu-and-kashmir.xml",
+    "https://www.amarujala.com/rss/jharkhand.xml",
+    "https://www.amarujala.com/rss/delhi.xml",
+    "https://www.amarujala.com/rss/punjab.xml",
+    "https://www.amarujala.com/rss/west-bengal.xml",
+    "https://www.amarujala.com/rss/bihar.xml",
+    "https://www.amarujala.com/rss/madhya-pradesh.xml",
+    "https://www.amarujala.com/rss/maharashtra.xml",
+    "https://www.amarujala.com/rss/rajasthan.xml",
+    "https://www.amarujala.com/rss/haryana.xml",
+    "https://www.amarujala.com/rss/himachal-pradesh.xml",
+    "https://www.bhaskar.com/rss/v1/2315",                      # Dainik Bhaskar National
+
+    # === South Indian Language Feeds ===
+    "https://www.dinamani.com/rss/all-feed.xml",                 # Tamil - Dinamani
+    "https://www.maalaimalar.com/rss/all-feed.xml",              # Tamil - Maalai Malar
+    "https://www.eenadu.net/rss/all-feed.xml",                   # Telugu - Eenadu
+    "https://www.sakshi.com/rss/telangana.xml",                  # Telugu - Sakshi
+    "https://www.prajavani.net/rss/all-feed.xml",                # Kannada - Prajavani
+    "https://www.mathrubhumi.com/rss/all-feed.xml",             # Malayalam - Mathrubhumi
+    "https://www.manoramaonline.com/rss/all-feed.xml",          # Malayalam - Manorama
+
+    # === East & West India Language Feeds ===
+    "https://www.anandabazar.com/rss/all-feed.xml",              # Bengali - Anandabazar Patrika
+    "https://www.loksatta.com/rss/all-feed.xml",                 # Marathi - Loksatta
+    "https://www.divyabhaskar.co.in/rss/all-feed.xml",           # Gujarati - Divya Bhaskar
 ]
 
 CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "model", ".cache")
@@ -147,11 +208,43 @@ def fetch_and_ingest(region="global"):
                 # Basic strip HTML from summary
                 summary_text = re.sub(r'<[^>]+>', '', summary)
                 
+                # Detect Indian language scripts beyond just Hindi
+                is_hindi = bool(re.search(r'[\u0900-\u097F]', title + summary_text))
+                is_tamil = bool(re.search(r'[\u0B80-\u0BFF]', title + summary_text))
+                is_telugu = bool(re.search(r'[\u0C00-\u0C7F]', title + summary_text))
+                is_bengali = bool(re.search(r'[\u0980-\u09FF]', title + summary_text))
+                is_kannada = bool(re.search(r'[\u0C80-\u0CFF]', title + summary_text))
+                is_malayalam = bool(re.search(r'[\u0D00-\u0D7F]', title + summary_text))
+                is_gujarati = bool(re.search(r'[\u0A80-\u0AFF]', title + summary_text))
+                is_punjabi = bool(re.search(r'[\u0A00-\u0A7F]', title + summary_text))
+                is_odia = bool(re.search(r'[\u0B00-\u0B7F]', title + summary_text))
+                
+                lang_hint = ""
+                if is_hindi:
+                    lang_hint = "LANGUAGE: Hindi\n"
+                elif is_tamil:
+                    lang_hint = "LANGUAGE: Tamil\n"
+                elif is_telugu:
+                    lang_hint = "LANGUAGE: Telugu\n"
+                elif is_bengali:
+                    lang_hint = "LANGUAGE: Bengali\n"
+                elif is_kannada:
+                    lang_hint = "LANGUAGE: Kannada\n"
+                elif is_malayalam:
+                    lang_hint = "LANGUAGE: Malayalam\n"
+                elif is_gujarati:
+                    lang_hint = "LANGUAGE: Gujarati\n"
+                elif is_punjabi:
+                    lang_hint = "LANGUAGE: Punjabi\n"
+                elif is_odia:
+                    lang_hint = "LANGUAGE: Odia\n"
+                
                 block = (
                     f"TITLE: {title}\n"
                     f"LINK: {link}\n"
                     f"DATE: {pubDate}\n"
                     f"IMAGE_URL: {image_url}\n"
+                    f"{lang_hint}"
                     f"BODY:\n{summary_text}\n"
                     f"{'='*80}"
                 )

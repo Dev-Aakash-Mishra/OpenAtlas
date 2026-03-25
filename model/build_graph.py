@@ -24,6 +24,11 @@ class Node(BaseModel):
     source_url: Optional[str] = None
     sentiment: Optional[float] = 0.0
     region: str = "global"
+    # Indian Regional Metadata
+    state: Optional[str] = None
+    district: Optional[str] = None
+    source_language: Optional[str] = "English"  # e.g., "Hindi", "Tamil", "English"
+    publisher: Optional[str] = None  # e.g., "NDTV", "Amar Ujala"
 
     def __init__(self, **data):
         super().__init__(**data)

@@ -2,11 +2,20 @@ import { useState, useRef, useEffect } from 'react';
 
 const API_BASE = '';
 
+const SUGGESTED_PROMPTS = [
+  'What is happening in India today?',
+  'Explain the India-China border situation',
+  'Latest cricket news',
+  'How is the rupee performing?',
+  'Top stories from Maharashtra',
+  'What is BRICS discussing?',
+];
+
 export default function ChatPanel({ onNodeSelect, onClose, fontSize }) {
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      text: 'Hi! Ask me anything about the knowledge graph. I\'ll find relevant nodes and answer with citations.',
+      text: 'Namaste! 🙏 Hello! Ask me anything about Indian news, regional trends, or global affairs. I can find relevant nodes and answer with citations.',
     },
   ]);
   
@@ -95,7 +104,7 @@ export default function ChatPanel({ onNodeSelect, onClose, fontSize }) {
   };
 
   return (
-    <div className="absolute top-6 right-6 bottom-6 w-96 flex flex-col bg-surface-container-low/95 backdrop-blur-3xl border border-outline-variant/20 z-[60] animate-in slide-in-from-right-8 duration-500 shadow-3xl rounded-[2rem] overflow-hidden">
+    <div className="absolute top-6 right-4 sm:right-6 bottom-6 w-[calc(100%-2rem)] sm:w-96 flex flex-col bg-surface-container-low/95 backdrop-blur-3xl border border-outline-variant/20 z-[60] animate-in slide-in-from-right-8 duration-500 shadow-3xl rounded-[2rem] overflow-hidden">
       <div className="flex items-center justify-between p-4 border-b border-outline-variant/10 bg-surface-container/30">
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>hub</span>
@@ -118,6 +127,22 @@ export default function ChatPanel({ onNodeSelect, onClose, fontSize }) {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-thin scrollbar-thumb-outline-variant/30 scrollbar-track-transparent">
+        {messages.length <= 1 && (
+          <div className="pb-2">
+            <p className="text-[11px] uppercase tracking-widest text-on-surface-variant mb-2 px-1">Try asking:</p>
+            <div className="flex flex-col gap-1.5">
+              {SUGGESTED_PROMPTS.map(prompt => (
+                <button
+                  key={prompt}
+                  className="text-left text-[11px] px-3 py-2 bg-surface-container-highest/50 hover:bg-primary/10 border border-outline-variant/10 hover:border-primary/30 rounded-xl transition-all text-on-surface-variant hover:text-primary font-medium"
+                  onClick={() => { setInput(prompt); }}
+                >
+                  {prompt}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {messages.map((msg, idx) => (
           <div key={idx} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
             <div 
@@ -131,11 +156,11 @@ export default function ChatPanel({ onNodeSelect, onClose, fontSize }) {
             </div>
             {msg.citedNodes?.length > 0 && (
               <div className="mt-2 flex flex-wrap gap-1 px-1">
-                <span className="text-[9px] uppercase tracking-tighter text-on-surface-variant mr-1 self-center">Citations:</span>
+                <span className="text-[11px] uppercase tracking-tighter text-on-surface-variant mr-1 self-center">Citations:</span>
                 {msg.citedNodes.map((id) => (
                   <button
                     key={id}
-                    className="text-[9px] font-headline font-bold px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-md hover:bg-primary/20 transition-all"
+                    className="text-[11px] font-headline font-bold px-2 py-0.5 bg-primary/10 text-primary border border-primary/20 rounded-md hover:bg-primary/20 transition-all"
                     onClick={() => onNodeSelect(id)}
                   >
                     {id.slice(0, 8)}
@@ -161,7 +186,7 @@ export default function ChatPanel({ onNodeSelect, onClose, fontSize }) {
         <div className="relative group">
           <textarea
             className="w-full bg-surface-container-highest/50 border border-outline-variant/20 rounded-xl py-3 pl-4 pr-12 text-xs focus:ring-1 focus:ring-primary/50 focus:border-primary/50 outline-none resize-none min-h-[44px] max-h-32 transition-all placeholder:text-on-surface-variant/40"
-            placeholder="Ask about geopolitical trends, node relationships or specific events..."
+            placeholder="Ask about Indian news, trends, or specific events..."
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}

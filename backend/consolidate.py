@@ -40,8 +40,9 @@ def run_consolidation():
         logger.info("Graph too small for consolidation. Skipping.")
         return
 
-    # We target nodes older than the 'living memory' limit of 150
-    oldest_nodes = nodes[:-150] 
+    # We target nodes older than the 'living memory' limit (default 150)
+    retention = int(os.getenv("graph_HISTORY_RETENTION", 150))
+    oldest_nodes = nodes[:-retention] 
     
     if len(oldest_nodes) < 10:
         logger.info("Not enough old nodes to consolidate. Skipping.")

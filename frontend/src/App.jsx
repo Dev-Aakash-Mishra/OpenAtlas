@@ -36,6 +36,10 @@ const DOMAIN_COLORS = {
   sports: '#f97316',
   health: '#14b8a6',
   politics: '#8b5cf6',
+  agriculture: '#166534',
+  development: '#1e40af',
+  education: '#eab308',
+  entertainment: '#f472b6',
 };
 
 const nodeTypes = { event: EventNode };
@@ -130,6 +134,17 @@ function GraphView() {
     return parseInt(localStorage.getItem('openatlas_node_limit')) || 50;
   });
   const [region, setRegion] = useState('global');
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [stateFilter, setStateFilter] = useState('all');
+  const [toast, setToast] = useState({ show: false, message: '', type: 'info' });
+
+  const toastTimerRef = React.useRef(null);
+
+  const showToast = (message, type = 'info') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ show: true, message, type });
+    toastTimerRef.current = setTimeout(() => setToast({ show: false, message: '', type: 'info' }), 4000);
+  };
 
   useEffect(() => {
     localStorage.setItem('openatlas_node_limit', nodeLimit);
@@ -143,9 +158,24 @@ function GraphView() {
   const [heatEnabled, setHeatEnabled] = useState(true);
   const [narrativeThread, setNarrativeThread] = useState(null);
   const [viewOptionsOpen, setViewOptionsOpen] = useState(false);
+  const [isProcessingThread, setIsProcessingThread] = useState(false);
+  const [isPredicting, setIsPredicting] = useState(false);
   const [ghostNodes, setGhostNodes] = useState([]);
   const [activeView, setActiveView] = useState('explorer');
   const [isDeploying, setIsDeploying] = useState(false);
+  const [timeWindow, setTimeWindow] = useState('all'); // Default to all to show history
+  // Default to 'list' for first-time users, persist preference
+  const [viewLayout, setViewLayout] = useState(() => {
+    return localStorage.getItem('openatlas_view_layout') || 'list';
+  });
+  const [showRegionTooltip, setShowRegionTooltip] = useState(() => {
+    return !localStorage.getItem('openatlas_region_tooltip_seen');
+  });
+
+  const dismissRegionTooltip = () => {
+    localStorage.setItem('openatlas_region_tooltip_seen', '1');
+    setShowRegionTooltip(false);
+  };
 
   const togglePin = useCallback((id) => {
     // Ghost nodes cannot be pinned
@@ -166,7 +196,17 @@ function GraphView() {
       .then(res => setHealthStatus(res.ok ? 'ok' : 'error'))
       .catch(() => setHealthStatus('error'));
 
-    fetch(`${API_BASE}/api/graph?region=${region}`)
+    let startDate = null;
+    if (timeWindow !== 'all') {
+      const d = new Date();
+      if (timeWindow === '24h') d.setHours(d.getHours() - 24);
+      else if (timeWindow === '3d') d.setDate(d.getDate() - 3);
+      else if (timeWindow === '7d') d.setDate(d.getDate() - 7);
+      startDate = d.toISOString();
+    }
+
+    const url = `${API_BASE}/api/graph?region=${region}&limit=${nodeLimit}${startDate ? `&start_date=${startDate}` : ''}`;
+    fetch(url)
       .then(async (r) => {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
@@ -188,7 +228,7 @@ function GraphView() {
       .finally(() => {
         // No longer managing isDeploying globally here
       });
-  }, [region]);
+  }, [region, nodeLimit, timeWindow]);
 
   const handleDeployQuery = async () => {
     setIsDeploying(true);
@@ -207,6 +247,12 @@ function GraphView() {
     }
   };
 
+  // Persist view layout preference
+  const handleSetViewLayout = (layout) => {
+    setViewLayout(layout);
+    localStorage.setItem('openatlas_view_layout', layout);
+  };
+
   useEffect(() => {
     fetchGraph();
     const interval = setInterval(fetchGraph, 30000); // 30s refresh during active session
@@ -215,6 +261,11 @@ function GraphView() {
 
   const filteredNodes = useMemo(() => {
     let base = [...graphData, ...ghostNodes];
+    
+    // 0. State Filter (India mode only)
+    if (stateFilter !== 'all') {
+      base = base.filter(n => n.state === stateFilter || n.isGhost);
+    }
     
     // 1. Domain Filter (Inclusive: Show matching nodes + their direct neighbors)
     if (filterDomain !== 'all') {
@@ -241,7 +292,7 @@ function GraphView() {
     }
     
     return base;
-  }, [graphData, ghostNodes, filterDomain, showPinnedOnly, pinnedNodes]);
+  }, [graphData, ghostNodes, filterDomain, showPinnedOnly, pinnedNodes, stateFilter]);
 
   useEffect(() => {
     if (!filteredNodes.length) {
@@ -294,6 +345,15 @@ function GraphView() {
       
       const source = displayNodes.find(dn => dn.id === n.id);
       if (source?.isGhost) n.data.isGhost = true;
+      // Pass Indian metadata fields through to EventNode
+      if (source) {
+        n.data.trust_score = source.trust_score;
+        n.data.bias_warning = source.bias_warning;
+        n.data.publisher = source.publisher;
+        n.data.state = source.state;
+        n.data.district = source.district;
+        n.data.region = source.region;
+      }
     });
 
     setNodes(activeNodes);
@@ -337,27 +397,40 @@ function GraphView() {
       const searchDimmed = targetQuery && !n.data.isSearchMatch;
       const searchGlow = targetQuery && n.data.isSearchMatch;
 
-      // New: Dim and blur neighbors if they don't match the current domain filter
+      // Domain filter: matching nodes get full opacity + glow, non-matching are dimmed
       const matchesFilter = filterDomain === 'all' || n.data?.domain === filterDomain;
-      const isNeighborDimmed = filterDomain !== 'all' && !matchesFilter && !isFocused;
+      const isDomainDimmed = filterDomain !== 'all' && !matchesFilter;
+      const isDomainHighlighted = filterDomain !== 'all' && matchesFilter;
 
-      let baseOpacity = isDimmed || searchDimmed || isNeighborDimmed ? (isGhostNode ? 0.05 : 0.2) : (isGhostNode ? 0.4 : 1);
-      
-      // Apply extra dimming for neighbors that are not currently focused
-      if (isNeighborDimmed && !isDimmed && !searchDimmed) {
-        baseOpacity = 0.12;
+      // Priority: thread > focus > domain filter > search
+      let baseOpacity;
+      if (narrativeThread) {
+        baseOpacity = isDimmed ? 0.05 : 1;
+      } else if (activeFocusId) {
+        baseOpacity = isDimmed ? 0.08 : (isDomainDimmed ? 0.1 : 1);
+      } else if (filterDomain !== 'all') {
+        baseOpacity = isDomainDimmed ? 0.08 : 1;
+      } else {
+        baseOpacity = searchDimmed ? 0.15 : (isGhostNode ? 0.7 : 1);
       }
 
-      const isStrongGlow = isFocused || searchGlow || (narrativeThread && isThreadNode);
+      const isStrongGlow = isFocused || searchGlow || (narrativeThread && isThreadNode) || isDomainHighlighted;
+
+      const filterStr = (() => {
+        if (isDomainDimmed) return 'blur(2px)';
+        if (narrativeThread && isDimmed) return 'blur(3px)';
+        if (isDomainHighlighted) return `drop-shadow(0 0 16px ${n.data?.color || 'rgba(255,255,255,0.4)'})`;
+        if (isStrongGlow) return `drop-shadow(0 0 22px ${isThreadNode ? '#fbbf24' : (isGhostNode ? '#8b5cf6' : 'rgba(255,255,255,0.6)')})`;
+        if (isGhostNode) return 'drop-shadow(0 0 12px rgba(139, 92, 246, 0.4))';
+        return 'none';
+      })();
 
       return {
         ...n,
         style: {
           ...n.style,
           opacity: baseOpacity,
-          filter: isStrongGlow 
-            ? `drop-shadow(0 0 22px ${isThreadNode ? '#fbbf24' : (isGhostNode ? '#8b5cf6' : 'rgba(255,255,255,0.6)')})` 
-            : (isNeighborDimmed ? 'blur(4px)' : 'none'),
+          filter: filterStr,
           borderWidth: isThreadNode ? '4px' : n.style.borderWidth,
           borderStyle: isGhostNode ? 'dashed' : 'solid',
           borderColor: isGhostNode ? '#8b5cf6' : n.style.borderColor,
@@ -387,9 +460,26 @@ function GraphView() {
         isEdgeFocused = e.source === activeFocusId || e.target === activeFocusId;
       }
       
+      // OPTIMIZATION: Look up domains from graphData/ghostNodes to avoid 'nodes' dependency
+      const allSourceData = [...graphData, ...ghostNodes];
+      const edgeMatchesDomain = filterDomain === 'all' || (() => {
+        const srcNode = allSourceData.find(n => n.id === e.source);
+        const tgtNode = allSourceData.find(n => n.id === e.target);
+        return srcNode?.domain === filterDomain || tgtNode?.domain === filterDomain;
+      })();
+
       // Hover Focus Mode: default edges are very dim to un-clutter the view
-      const op = narrativeThread ? (isThreadEdge ? 1 : 0.01) : (activeFocusId ? (isEdgeFocused ? 0.95 : 0.01) : (isGhostEdge ? 0.1 : 0.15));
-      const sw = (narrativeThread && isThreadEdge) ? 4 : (activeFocusId && isEdgeFocused ? 3 : 1);
+      let op;
+      if (narrativeThread) {
+        op = isThreadEdge ? 1 : 0.01;
+      } else if (activeFocusId) {
+        op = isEdgeFocused ? 0.95 : 0.01;
+      } else if (filterDomain !== 'all') {
+        op = edgeMatchesDomain ? 0.7 : 0.03;
+      } else {
+        op = isGhostEdge ? 0.1 : 0.15;
+      }
+      const sw = (narrativeThread && isThreadEdge) ? 4 : (activeFocusId && isEdgeFocused ? 3 : (filterDomain !== 'all' && edgeMatchesDomain ? 2 : 1));
       
       return {
         ...e,
@@ -404,7 +494,7 @@ function GraphView() {
         }
       };
     }));
-  }, [focusedNodeId, selectedNode, graphData, ghostNodes, searchQuery, setNodes, setEdges, narrativeThread]);
+  }, [focusedNodeId, selectedNode, graphData, ghostNodes, searchQuery, setNodes, setEdges, narrativeThread, filterDomain]);
 
   const onNodeClick = useCallback((_, node) => {
     setSelectedNode(node.data);
@@ -435,6 +525,7 @@ function GraphView() {
   }, [graphData, nodes, setCenter]);
 
   const handleFollowThread = useCallback((nodeId) => {
+    setIsProcessingThread(true);
     fetch(`${API_BASE}/api/narrative_thread/${nodeId}`)
       .then(res => res.json())
       .then(data => {
@@ -442,16 +533,19 @@ function GraphView() {
         // Clear selection to focus on the thread
         setSelectedNode(null);
       })
-      .catch(err => console.error("Narrative thread fetch failed", err));
+      .catch(err => console.error("Narrative thread fetch failed", err))
+      .finally(() => setIsProcessingThread(false));
   }, []);
 
   const handlePredictBranch = useCallback((nodeId) => {
+    setIsPredicting(true);
     fetch(`${API_BASE}/api/predict_branch/${nodeId}`)
       .then(res => res.json())
       .then(data => {
         setGhostNodes(prev => [...prev, ...data]);
       })
-      .catch(err => console.error("Ghost prediction failed", err));
+      .catch(err => console.error("Ghost prediction failed", err))
+      .finally(() => setIsPredicting(false));
   }, []);
 
   const handleMaterialize = useCallback((ghostNode) => {
@@ -468,7 +562,7 @@ function GraphView() {
           fetchGraph();
           setSelectedNode(null);
         } else {
-          alert("Materialization failed: " + data.message);
+          showToast("Materialization failed: " + data.message, 'error');
         }
       })
       .catch(err => console.error("Materialization error", err));
@@ -488,16 +582,20 @@ function GraphView() {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-background text-on-surface font-body">
-      {/* SideNavBar */}
-      <aside className="fixed left-0 top-0 h-full w-64 z-50 bg-[#10131a]/90 backdrop-blur-2xl border-r border-[#45484f]/15 flex flex-col py-4 font-body text-sm font-medium">
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-[55] bg-black/50 md:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+      {/* SideNavBar — hidden on mobile by default, toggleable */}
+      <aside className={`fixed left-0 top-0 h-full w-64 z-[60] bg-[#10131a]/95 backdrop-blur-2xl border-r border-[#45484f]/15 flex flex-col py-4 font-body text-sm font-medium transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
         <div className="px-6 mb-8">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded bg-primary/20 flex items-center justify-center border border-primary/30">
-              <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>terminal</span>
+              <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>hub</span>
             </div>
             <div>
-              <h3 className="text-[#9fa7ff] font-headline font-bold leading-none">Terminal 01</h3>
-              <p className="text-[10px] text-secondary/70 uppercase tracking-widest mt-1">System Active</p>
+              <h3 className="text-[#9fa7ff] font-headline font-bold leading-none">OpenAtlas</h3>
+              <p className="text-[10px] text-secondary/70 uppercase tracking-widest mt-1">News Intelligence</p>
             </div>
           </div>
         </div>
@@ -538,26 +636,6 @@ function GraphView() {
             <span className="material-symbols-outlined">inventory_2</span>
             <span>Archive</span>
           </button>
-
-          <div className="mt-6 px-6">
-            <h4 className="text-[10px] font-headline uppercase tracking-widest text-[#9fa7ff] mb-4 opacity-50">Local Intelligence</h4>
-            <div className="space-y-2">
-              <button 
-                className={`flex items-center w-full gap-3 px-4 py-2 rounded-xl transition-all duration-200 ${region === 'global' ? 'bg-primary/20 text-primary shadow-lg' : 'text-[#ecedf6]/40 hover:text-[#ecedf6] hover:bg-surface-container-highest/30'}`}
-                onClick={() => setRegion('global')}
-              >
-                <span className="material-symbols-outlined text-sm">public</span>
-                <span className="text-xs">Global Feed</span>
-              </button>
-              <button 
-                className={`flex items-center w-full gap-3 px-4 py-2 rounded-xl transition-all duration-200 ${region === 'India' ? 'bg-secondary/20 text-secondary shadow-lg' : 'text-[#ecedf6]/40 hover:text-[#ecedf6] hover:bg-surface-container-highest/30'}`}
-                onClick={() => setRegion('India')}
-              >
-                <span className="material-symbols-outlined text-sm">location_on</span>
-                <span className="text-xs">India Events</span>
-              </button>
-            </div>
-          </div>
         </nav>
 
         <div className="px-4 mt-auto space-y-4">
@@ -566,8 +644,8 @@ function GraphView() {
             onClick={handleDeployQuery}
             disabled={isDeploying}
           >
-            <span className="material-symbols-outlined text-sm">{isDeploying ? 'sync' : 'rocket_launch'}</span>
-            {isDeploying ? 'Deploying...' : 'Deploy Query'}
+            <span className="material-symbols-outlined text-sm">{isDeploying ? 'sync' : 'refresh'}</span>
+            {isDeploying ? 'Fetching...' : 'Fetch Latest News'}
           </button>
           <div className="pt-4 border-t border-outline-variant/15 flex flex-col gap-1">
             <a className="flex items-center gap-3 px-2 py-2 text-[#ecedf6]/50 hover:text-[#ecedf6] text-xs transition-colors" href="#">
@@ -582,57 +660,97 @@ function GraphView() {
         </div>
       </aside>
 
-      {/* Main Container */}
-      <div className="flex flex-col flex-1 ml-64">
+      {/* Main Container — responsive margin */}
+      <div className="flex flex-col flex-1 ml-0 md:ml-64">
         {/* TopNavBar */}
-        <nav className="w-full h-16 bg-[#0b0e14]/80 backdrop-blur-xl border-b border-[#45484f]/15 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] flex justify-between items-center px-6 z-40">
-          <div className="flex items-center gap-8">
-            <span className="text-xl font-bold text-primary tracking-widest uppercase font-headline">OpenAtlas</span>
-             <div className="hidden md:flex items-center gap-6 font-headline tracking-tight text-sm">
+        <nav className="w-full h-14 md:h-16 bg-[#0b0e14]/80 backdrop-blur-xl border-b border-[#45484f]/15 shadow-[0_8px_32px_0_rgba(0,0,0,0.36)] flex justify-between items-center px-3 md:px-6 z-40">
+          <div className="flex items-center gap-3 md:gap-8">
+            {/* Hamburger for mobile */}
+            <button className="md:hidden p-2 text-on-surface-variant hover:text-primary" onClick={() => setSidebarOpen(!sidebarOpen)}>
+              <span className="material-symbols-outlined">menu</span>
+            </button>
+            <span className="text-lg md:text-xl font-bold text-primary tracking-widest uppercase font-headline">OpenAtlas</span>
+          <div className="hidden md:flex items-center gap-6 font-headline tracking-tight text-sm">
+                <div className="relative">
+                  <button 
+                    className={`transition-colors cursor-pointer ${region === 'global' ? 'text-primary border-b-2 border-primary pb-1' : 'text-[#ecedf6]/60 hover:text-[#ecedf6]'}`}
+                    onClick={() => { setRegion('global'); setStateFilter('all'); dismissRegionTooltip(); }}
+                  >
+                    Global
+                  </button>
+                </div>
+                <div className="relative">
+                  <button 
+                    className={`transition-colors cursor-pointer ${region === 'India' ? 'text-secondary border-b-2 border-secondary pb-1' : 'text-[#ecedf6]/60 hover:text-[#ecedf6]'}`}
+                    onClick={() => { setRegion('India'); dismissRegionTooltip(); }}
+                  >
+                    🇮🇳 India
+                  </button>
+                  {/* First-time onboarding tooltip */}
+                  {showRegionTooltip && (
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 z-50 w-52 bg-secondary/95 backdrop-blur-xl text-on-secondary p-3 rounded-xl shadow-2xl border border-secondary/40 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="text-[10px] font-bold mb-1">🇮🇳 India Mode Available!</div>
+                      <p className="text-[9px] leading-relaxed opacity-90">Switch to see cricket, regional, and state-level news in Hindi and English.</p>
+                      <button className="mt-2 text-[9px] font-bold underline opacity-70 hover:opacity-100" onClick={dismissRegionTooltip}>Got it</button>
+                      <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-secondary rotate-45 rounded-sm"></div>
+                    </div>
+                  )}
+                </div>
+                <div className="w-px h-4 bg-outline-variant/30 ml-2"></div>
                 <button 
                   className={`transition-colors cursor-pointer ${activeView === 'explorer' ? 'text-primary border-b-2 border-primary pb-1' : 'text-[#ecedf6]/60 hover:text-[#ecedf6]'}`}
                   onClick={() => { setActiveView('explorer'); setCenter(0, 0, { zoom: 0.8, duration: 1000 }); }}
                 >
                   Nodes
                 </button>
-                <button 
-                  className="text-[#ecedf6]/60 hover:text-[#ecedf6] transition-colors cursor-pointer"
-                  onClick={() => {
-                    setActiveView('explorer');
-                    setEdges(eds => eds.map(e => ({ ...e, style: { ...e.style, opacity: 1, strokeWidth: 4, stroke: '#fff' } })));
-                    setTimeout(() => setEdges(eds => eds.map(e => ({ ...e, style: { ...e.style, opacity: 0.15, strokeWidth: 1, stroke: undefined } }))), 1500);
-                  }}
-                >
-                  Edges
-                </button>
-                <button 
-                  className="text-[#ecedf6]/60 hover:text-[#ecedf6] transition-colors cursor-pointer"
-                  onClick={() => {
-                    setActiveView('explorer');
-                    const legend = document.querySelector('.legend-container');
-                    if (legend) {
-                      legend.classList.add('animate-bounce');
-                      setTimeout(() => legend.classList.remove('animate-bounce'), 1000);
-                    }
-                  }}
-                >
-                  Domains
-                </button>
               </div>
             </div>
 
-          <div className="flex-1 max-w-xl px-12">
+          <div className="flex-1 max-w-xl px-2 md:px-12">
             <div className="relative group">
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-sm">search</span>
               <input 
                 className="w-full bg-surface-container-highest border-none rounded-lg py-2 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary/50 placeholder:text-on-surface-variant/50 text-on-surface"
-                placeholder="Search events, entities, or news clusters..."
+                placeholder="Search topics, places, or news..."
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
           </div>
+
+          {/* State filter dropdown — only visible in India mode */}
+          {region === 'India' && (
+            <select
+              className="bg-surface-container-highest border border-outline-variant/20 rounded-lg px-3 py-1.5 text-xs text-on-surface font-medium focus:ring-1 focus:ring-secondary/50 hidden sm:block"
+              value={stateFilter}
+              onChange={(e) => setStateFilter(e.target.value)}
+            >
+              <option value="all">All States</option>
+              <option value="Andhra Pradesh">Andhra Pradesh</option>
+              <option value="Bihar">Bihar</option>
+              <option value="Chhattisgarh">Chhattisgarh</option>
+              <option value="Delhi">Delhi</option>
+              <option value="Goa">Goa</option>
+              <option value="Gujarat">Gujarat</option>
+              <option value="Haryana">Haryana</option>
+              <option value="Himachal Pradesh">Himachal Pradesh</option>
+              <option value="Jammu and Kashmir">Jammu & Kashmir</option>
+              <option value="Jharkhand">Jharkhand</option>
+              <option value="Karnataka">Karnataka</option>
+              <option value="Kerala">Kerala</option>
+              <option value="Madhya Pradesh">Madhya Pradesh</option>
+              <option value="Maharashtra">Maharashtra</option>
+              <option value="Odisha">Odisha</option>
+              <option value="Punjab">Punjab</option>
+              <option value="Rajasthan">Rajasthan</option>
+              <option value="Tamil Nadu">Tamil Nadu</option>
+              <option value="Telangana">Telangana</option>
+              <option value="Uttar Pradesh">Uttar Pradesh</option>
+              <option value="Uttarakhand">Uttarakhand</option>
+              <option value="West Bengal">West Bengal</option>
+            </select>
+          )}
 
           <div className="flex items-center gap-4">
             <div className="hidden lg:flex items-center gap-4 px-4 py-1.5 rounded-full bg-surface-container-low border border-outline-variant/10 text-[10px] font-headline tracking-wider uppercase">
@@ -643,6 +761,14 @@ function GraphView() {
               <span className="text-on-surface-variant">Domains: {stats.domains}</span>
             </div>
             <div className="flex items-center gap-1">
+              {/* View Layout toggle — always present */}
+              <button 
+                className={`p-2 hover:bg-[#22262f]/50 transition-all duration-200 rounded-lg active:scale-95 ${viewLayout === 'list' ? 'text-primary bg-[#22262f]/50' : 'text-[#ecedf6]/60'}`}
+                onClick={() => handleSetViewLayout(viewLayout === 'graph' ? 'list' : 'graph')}
+                title={viewLayout === 'graph' ? 'Switch to List View (InShorts Style)' : 'Switch to Graph View'}
+              >
+                <span className="material-symbols-outlined">{viewLayout === 'graph' ? 'view_agenda' : 'hub'}</span>
+              </button>
               <button 
                 className={`p-2 hover:bg-[#22262f]/50 transition-all duration-200 rounded-lg active:scale-95 ${viewOptionsOpen ? 'text-primary bg-[#22262f]/50' : 'text-[#ecedf6]/60'}`}
                 onClick={() => setViewOptionsOpen(!viewOptionsOpen)}
@@ -653,9 +779,17 @@ function GraphView() {
           </div>
         </nav>
 
-        {/* Main Graph Area */}
+        {/* Main Graph Area / List Area */}
         <main className="relative flex-1 overflow-hidden graph-grid bg-surface">
-          {activeView === 'filters' && (
+          {viewLayout === 'list' ? (
+            <ListView 
+              nodes={nodes} 
+              onNodeClick={(id) => { handleSetViewLayout('graph'); handleNodeSelectFromChat(id); }}
+              domainColors={DOMAIN_COLORS}
+            />
+          ) : (
+            <>
+              {activeView === 'filters' && (
              <div className="absolute inset-0 z-30 p-12 overflow-y-auto bg-surface/50 backdrop-blur-md animate-in fade-in duration-500">
                <div className="max-w-4xl mx-auto">
                  <h2 className="text-3xl font-headline font-bold mb-10 text-primary uppercase tracking-[0.2em] flex items-center gap-4">
@@ -673,7 +807,7 @@ function GraphView() {
                             <span className="text-primary font-bold">{nodeLimit}</span>
                           </div>
                           <input 
-                            type="range" min="10" max="150" step="5" 
+                            type="range" min="10" max="500" step="10" 
                             className="w-full h-1.5 bg-surface-container-highest rounded-lg appearance-none cursor-pointer accent-primary"
                             value={nodeLimit}
                             onChange={(e) => setNodeLimit(Number(e.target.value))}
@@ -716,6 +850,27 @@ function GraphView() {
                         ))}
                       </div>
                       <p className="text-[10px] text-on-surface-variant mt-6 leading-relaxed">Selecting a specific domain will filter the graph and intelligence feed to only show events within that sector.</p>
+                    </div>
+
+                    <div className="p-8 bg-surface-container-high rounded-[2rem] border border-outline-variant/10 shadow-xl col-span-full">
+                       <h4 className="text-xs font-headline font-bold uppercase tracking-widest text-[#fbbf24] mb-6 font-bold">Temporal Focus</h4>
+                       <div className="flex flex-wrap gap-3">
+                         {[
+                           { id: '24h', label: 'Last 24 Hours' },
+                           { id: '3d', label: 'Last 3 Days' },
+                           { id: '7d', label: 'Last Week' },
+                           { id: 'all', label: 'Full Historical Atlas' }
+                         ].map(tw => (
+                           <button 
+                             key={tw.id}
+                             className={`px-6 py-3 rounded-2xl text-[10px] font-headline font-bold uppercase tracking-widest transition-all border ${timeWindow === tw.id ? 'bg-[#fbbf24] text-[#13151a] border-[#fbbf24] shadow-[0_0_20px_rgba(251,191,36,0.3)] scale-105' : 'bg-surface-container-highest/50 text-on-surface-variant border-outline-variant/10 hover:border-[#fbbf24]/50'}`}
+                             onClick={() => setTimeWindow(tw.id)}
+                           >
+                             {tw.label}
+                           </button>
+                         ))}
+                       </div>
+                       <p className="text-[10px] text-on-surface-variant mt-6 leading-relaxed">Shifting the temporal focus allows the OpenAtlas engine to retrieve deeper context from the global event database.</p>
                    </div>
                  </div>
 
@@ -787,6 +942,35 @@ function GraphView() {
                       />
                     </ReactFlow>
                   </div>
+
+                  {/* Floating Timeline Overlay */}
+                  <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-[45] bg-surface-container-high/90 backdrop-blur-3xl border border-outline-variant/20 px-8 py-4 rounded-[2.5rem] shadow-2xl flex items-center gap-8 min-w-[500px] animate-in slide-in-from-bottom-4">
+                    <div className="flex flex-col gap-1">
+                      <span className="text-[9px] font-headline font-bold uppercase tracking-[0.2em] text-[#9fa7ff]">Time Travel</span>
+                      <span className="text-[8px] text-on-surface-variant uppercase tracking-tighter">Current Temporal Viewport</span>
+                    </div>
+                    <div className="flex-1 flex gap-2">
+                      {[
+                        { id: '24h', label: '24H' },
+                        { id: '3d', label: '3D' },
+                        { id: '7d', label: '7D' },
+                        { id: 'all', label: 'History' }
+                      ].map(tw => (
+                        <button 
+                          key={tw.id}
+                          onClick={() => setTimeWindow(tw.id)}
+                          className={`px-4 py-2 rounded-xl text-[10px] font-bold uppercase tracking-tight transition-all duration-300 ${timeWindow === tw.id ? 'bg-primary text-on-primary shadow-[0_0_15px_rgba(159,167,255,0.4)] scale-105' : 'hover:bg-primary/10 text-on-surface-variant'}`}
+                        >
+                          {tw.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="h-8 w-px bg-outline-variant/20"></div>
+                    <div className="flex flex-col items-end">
+                      <div className="text-xs font-bold font-headline text-primary tabular-nums">{graphData.length} <span className="text-[10px] text-on-surface-variant/50 font-normal">/ 500</span></div>
+                      <div className="text-[8px] text-on-surface-variant uppercase font-bold tracking-widest">Nodes Active</div>
+                    </div>
+                  </div>
               </div>
 
               <Legend
@@ -797,6 +981,8 @@ function GraphView() {
               />
             </>
           )}
+        </>
+      )}
 
           {activeView === 'intelligence' && (
             <div className="absolute inset-0 z-30 p-12 overflow-y-auto bg-surface/50 backdrop-blur-md animate-in fade-in duration-500">
@@ -842,7 +1028,7 @@ function GraphView() {
                           <div className="absolute -left-3 top-8 w-1 h-12 bg-primary rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
                           <div className="flex items-center gap-4 mb-4">
                             <span className="text-[10px] font-headline font-bold text-primary bg-primary/10 px-3 py-1 rounded-full uppercase tracking-wider">{node.domain}</span>
-                            <span className="text-on-surface-variant text-[10px] font-medium">{new Date(node.timestamp).toLocaleString()}</span>
+                            <span className="text-on-surface-variant text-[10px] font-medium">{new Date(node.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })} IST</span>
                             <div className="ml-auto flex gap-1">
                               {[1,2,3].map(dot => <div key={dot} className="w-1 H-1 rounded-full bg-primary/30"></div>)}
                             </div>
@@ -853,13 +1039,21 @@ function GraphView() {
                           <div className="mt-6 pt-4 border-t border-outline-variant/5 flex items-center justify-between">
                             <div className="flex gap-4">
                                 <span className="flex items-center gap-1.5 text-[10px] text-primary/70 uppercase font-bold tracking-tighter">
-                                  <span className="material-symbols-outlined text-xs">analytics</span>
-                                  Correlation: {(0.85 + Math.random() * 0.1).toFixed(2)}
-                                </span>
-                                <span className="flex items-center gap-1.5 text-[10px] text-secondary/70 uppercase font-bold tracking-tighter">
                                   <span className="material-symbols-outlined text-xs">verified</span>
-                                  Confidence: {(0.9 + Math.random() * 0.08).toFixed(2)}
+                                  Trust: {node.trust_score ?? 'N/A'}%
                                 </span>
+                                {node.bias_warning && (
+                                  <span className="flex items-center gap-1.5 text-[10px] text-orange-400 uppercase font-bold tracking-tighter">
+                                    <span className="material-symbols-outlined text-xs">warning</span>
+                                    Bias Flagged
+                                  </span>
+                                )}
+                                {node.publisher && (
+                                  <span className="flex items-center gap-1.5 text-[10px] text-on-surface-variant/70 uppercase font-bold tracking-tighter">
+                                    <span className="material-symbols-outlined text-xs">newsmode</span>
+                                    {node.publisher}
+                                  </span>
+                                )}
                             </div>
                             <button className="text-[10px] text-primary font-bold uppercase tracking-widest flex items-center gap-2 group/btn">
                               Project on Map <span className="material-symbols-outlined text-sm group-hover/btn:translate-x-1 transition-transform">arrow_forward</span>
@@ -915,7 +1109,7 @@ function GraphView() {
                                <span className="text-[9px] font-headline font-bold text-primary bg-primary/10 border border-primary/20 px-3 py-1 rounded-full uppercase tracking-widest">{node.domain}</span>
                             </td>
                             <td className="px-8 py-6 text-[11px] font-medium text-on-surface-variant">
-                              {new Date(node.timestamp).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                              {new Date(node.timestamp).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })} IST
                             </td>
                             <td className="px-8 py-6 text-center">
                                <button 
@@ -958,6 +1152,9 @@ function GraphView() {
               onFollowThread={handleFollowThread}
               onPredictBranch={handlePredictBranch}
               onMaterialize={handleMaterialize}
+              isProcessingThread={isProcessingThread}
+              isPredicting={isPredicting}
+              showToast={showToast}
             />
           )}
 
@@ -996,7 +1193,7 @@ function GraphView() {
           )}
 
           {narrativeThread && (
-            <div className="absolute bottom-8 left-1/2 -track-x-1/2 z-40 w-[min(600px,90vw)] bg-surface-container-low/90 backdrop-blur-2xl border border-[#fbbf24]/30 p-6 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-8">
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-40 w-[min(600px,90vw)] bg-surface-container-low/90 backdrop-blur-2xl border border-[#fbbf24]/30 p-6 rounded-2xl shadow-2xl animate-in slide-in-from-bottom-8">
               <div className="flex items-center gap-3 text-[#fbbf24] mb-3">
                 <span className="material-symbols-outlined">analytics</span>
                 <span className="text-xs font-headline font-bold uppercase tracking-widest">Narrative Intelligence</span>
@@ -1004,7 +1201,104 @@ function GraphView() {
               <p className="text-sm leading-relaxed text-[#e2e8f0]">{narrativeThread.explanation}</p>
             </div>
           )}
+
+          {toast.show && (
+            <div className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-xl border shadow-2xl animate-in slide-in-from-bottom-4 flex items-center gap-3 ${
+              toast.type === 'success' ? 'bg-emerald-500/90 border-emerald-400 text-white' : 'bg-surface-container-high/90 border-outline-variant/30 text-on-surface'
+            }`}>
+              <span className="material-symbols-outlined text-sm">{toast.type === 'success' ? 'check_circle' : 'info'}</span>
+              <span className="text-xs font-bold font-headline uppercase tracking-widest">{toast.message}</span>
+            </div>
+          )}
         </main>
+      </div>
+    </div>
+  );
+}
+
+function ListView({ nodes, onNodeClick, domainColors }) {
+  const displayNodes = nodes.filter(n => !n.data.isGhost).slice().reverse();
+  
+  const handleShare = (e, node) => {
+    e.stopPropagation();
+    const headline = node.data.content?.split('.')[0] || 'News';
+    const url = node.data.source_url || window.location.href;
+    const text = `${headline}\n\nRead more: ${url}\n\n— via OpenAtlas`;
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
+  return (
+    <div className="absolute inset-0 z-30 p-4 md:p-12 overflow-y-auto bg-[#0b0e14]/50 backdrop-blur-md animate-in fade-in duration-500">
+      <div className="max-w-4xl mx-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 md:mb-10">
+          <h2 className="text-xl md:text-3xl font-headline font-bold text-primary uppercase tracking-[0.15em] md:tracking-[0.2em] flex items-center gap-3">
+            <span className="material-symbols-outlined text-2xl md:text-4xl">view_agenda</span>
+            News Feed
+          </h2>
+          <div className="px-3 py-1.5 bg-secondary/10 border border-secondary/20 rounded-full text-[11px] font-bold text-secondary uppercase tracking-widest">
+            {displayNodes.length} Stories
+          </div>
+        </div>
+        
+        {displayNodes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <span className="material-symbols-outlined text-6xl text-on-surface-variant/30 mb-4">newspaper</span>
+            <h3 className="text-lg font-headline font-bold text-on-surface-variant mb-2">No news available yet</h3>
+            <p className="text-sm text-on-surface-variant/70 max-w-md">Click "Fetch Latest News" in the sidebar to pull the latest stories, or switch between Global and India tabs.</p>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:gap-6">
+            {displayNodes.map((node) => (
+              <div 
+                key={node.id} 
+                className="relative p-4 md:p-6 bg-surface-container-high/60 border border-outline-variant/10 rounded-xl md:rounded-2xl hover:border-primary/40 transition-all cursor-pointer group shadow-lg"
+                onClick={() => onNodeClick(node.id)}
+              >
+                <div className="flex flex-wrap items-center gap-2 md:gap-3 mb-3">
+                  <span className="text-[11px] font-headline font-bold px-2 py-0.5 rounded-full uppercase tracking-wider text-white" style={{ backgroundColor: domainColors[node.data.domain] }}>
+                    {node.data.domain}
+                  </span>
+                  <span className="text-on-surface-variant text-[11px] font-medium">
+                    {new Date(node.data.timestamp).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })} IST
+                  </span>
+                  {node.data.state && (
+                    <span className="flex items-center gap-1 text-[11px] text-secondary font-bold uppercase tracking-tighter">
+                      <span className="material-symbols-outlined text-xs">location_on</span>
+                      {node.data.district ? `${node.data.district}, ${node.data.state}` : node.data.state}
+                    </span>
+                  )}
+                  {node.data.region === 'India' && !node.data.state && (
+                    <span className="flex items-center gap-1 text-[11px] text-secondary font-bold uppercase tracking-tighter">
+                      🇮🇳 India
+                    </span>
+                  )}
+                  {/* Share to WhatsApp */}
+                  <button 
+                    className="ml-auto p-1.5 rounded-lg hover:bg-green-500/10 text-on-surface-variant/50 hover:text-green-500 transition-colors"
+                    onClick={(e) => handleShare(e, node)}
+                    title="Share via WhatsApp"
+                  >
+                    <span className="material-symbols-outlined text-base">share</span>
+                  </button>
+                </div>
+                <h4 className="text-base md:text-lg font-headline font-bold text-on-surface group-hover:text-primary transition-colors leading-tight mb-2">
+                  {node.data.content?.split('.')[0]}
+                </h4>
+                <p className="text-xs md:text-sm text-on-surface-variant leading-relaxed opacity-80 group-hover:opacity-100 transition-opacity whitespace-pre-wrap">
+                  {node.data.content}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {(node.data.key_elements || []).slice(0, 5).map(key => (
+                    <span key={key} className="text-[11px] px-1.5 py-0.5 bg-surface-container-highest rounded text-on-surface-variant border border-outline-variant/5">
+                      {key}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

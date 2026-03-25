@@ -16,6 +16,7 @@ MODEL  = "gemini-2.5-flash"
 
 # ── OpenRouter (fallback) ─────────────────────────────────────────────────────
 _or_key = os.getenv("OPENROUTER_API_KEY", "")
+_wait = int(os.getenv("WAIT_TIME", 20))
 openrouter = OpenAI(
     base_url="https://openrouter.ai/api/v1",
     api_key=_or_key,
@@ -121,7 +122,7 @@ def chat_llm(query: str, system_prompt: str = None) -> str:
         except Exception as e:
             err = str(e).upper()
             if _is_rate_limit(err):
-                wait = 30 * (2 ** (attempt - 1))
+                wait = _wait * (attempt)
                 logger.warning(
                     "Gemini rate limit hit. Retrying %d/%d in %ds...",
                     attempt, MAX_RETRIES, wait,
@@ -184,7 +185,7 @@ def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
         except Exception as e:
             err = str(e).upper()
             if _is_rate_limit(err):
-                wait = 20 * attempt
+                wait = 5 * attempt
                 logger.warning(
                     "Gemini embed rate limit. Retrying %d/%d in %ds...",
                     attempt, MAX_RETRIES, wait,

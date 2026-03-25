@@ -61,6 +61,13 @@
   --radius-lg: 0.25rem;
   --radius-xl: 0.5rem;
   --radius-full: 9999px;
+
+  /* Indian Context Custom Colors */
+  --color-agriculture: #166534;
+  --color-development: #1e40af;
+  --color-bharat-saffron: #ff9933;
+  --color-bharat-green: #138808;
+  --color-bharat-blue: #000080;
 }
 
 @layer base {
@@ -82,9 +89,21 @@
   .node-glow-tertiary {
     box-shadow: 0 0 15px rgba(255, 134, 195, 0.4);
   }
+  .node-glow-prediction {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+  }
+  .animate-pulse-subtle {
+    animation: pulse-subtle 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
   .graph-grid {
     background-image: radial-gradient(rgba(69, 72, 79, 0.15) 1px, transparent 1px);
     background-size: 40px 40px;
+  }
+  .bg-bharat-gradient {
+    background: linear-gradient(135deg, rgba(255, 153, 51, 0.1) 0%, rgba(255, 255, 255, 0.05) 50%, rgba(19, 136, 8, 0.1) 100%);
+  }
+  .border-bharat {
+    border-image: linear-gradient(to right, #ff9933, #fff, #138808) 1;
   }
 }
 
@@ -107,4 +126,15 @@
   background-image: 
     radial-gradient(circle at 2px 2px, rgba(159, 167, 255, 0.05) 1px, transparent 0);
   background-size: 30px 30px;
+}
+
+@keyframes pulse-subtle {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
 }

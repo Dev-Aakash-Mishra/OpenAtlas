@@ -2,12 +2,11 @@ import os
 import sys
 import logging
 import time
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
-import time
 import requests
 
 # Ensure the root directory is in sys.path for internal module imports
@@ -19,7 +18,6 @@ from model.query import query_graph, get_node_by_id, search_nodes, find_narrativ
 from model.build_graph import Node
 from model.neo4j_client import neo4j_client
 from scheduler import start_background_worker, fetch_and_ingest, worker_status
-from fastapi import FastAPI, HTTPException, Request, BackgroundTasks
 from contextlib import asynccontextmanager
 
 @asynccontextmanager
@@ -100,9 +98,7 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": "An internal server error occurred."}
     )
 
-@app.get("/api/health")
-def health_check():
-    return {"status": "ok"}
+# Duplicate health endpoint removed (defined above at line 53)
 
 @app.post("/api/chat", response_model=ChatResponse)
 def chat(req: ChatRequest) -> ChatResponse:
@@ -152,18 +148,34 @@ def get_deep_dive(node_id: str) -> dict:
     return deep_dive_node(node_id)
 
 @app.get("/api/graph")
-def get_graph(region: str = "global") -> list[dict]:
-    """Fetch latest 150 nodes and their relationships from Neo4j, filtered by region."""
+def get_graph(
+    region: str = "global", 
+    start_date: str = None, 
+    end_date: str = None, 
+    limit: int = 150
+) -> list[dict]:
+    """Fetch nodes and their relationships from Neo4j, filtered by region and date range."""
+    # Ensure limit is within sane bounds
+    limit = min(max(limit, 10), 1000)
+    
     cypher = """
     MATCH (n:Event)
-    WHERE (n.region = $region) OR ($region = 'global' AND n.region IS NULL)
-    OPTIONAL MATCH (n)-[:CONNECTED_TO]->(m:Event)
+    WHERE ((n.region = $region) OR ($region = 'global' AND n.region IS NULL))
+      AND ($start_date IS NULL OR n.timestamp >= datetime($start_date))
+      AND ($end_date IS NULL OR n.timestamp <= datetime($end_date))
+    OPTIONAL MATCH (n)-[r:CONNECTED_TO]->(m:Event)
     WITH n, collect(m.id) as next_ids
     ORDER BY n.timestamp DESC
-    LIMIT 150
+    LIMIT $limit
     RETURN n, next_ids
     """
-    result = neo4j_client.execute_query(cypher, {"region": region})
+    params = {
+        "region": region,
+        "start_date": start_date,
+        "end_date": end_date,
+        "limit": limit
+    }
+    result = neo4j_client.execute_query(cypher, params)
     
     nodes_data = []
     if result:
