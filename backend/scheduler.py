@@ -13,6 +13,7 @@ if root_path not in sys.path:
     sys.path.insert(0, root_path)
 # In-function imports used to break circularity
 from backend.consolidate import run_consolidation
+from model.ingestion import create_nodes
 
 logger = logging.getLogger(__name__)
 
@@ -260,50 +261,60 @@ def fetch_and_ingest(region="global"):
             f.write("\n".join(blocks))
             
         logger.info(f"Wrote {len(blocks)} articles to temporary cache. Generating nodes via LLM for region: {region}...")
+        
         try:
-            from main import create_nodes
             create_nodes(cache_path, region=region)
             worker_status["state"] = "idle"
-            worker_status["message"] = "Successfully updated intelligence graph."
-            logger.info("✅ Live feed ingestion and graph update successful.")
+            worker_status["message"] = f"Intelligence Sync Complete for {region}."
         except Exception as e:
-            err_msg = str(e)
-            if "429" in err_msg or "ResourceExhausted" in err_msg or "Rate limit" in err_msg:
-                worker_status["state"] = "rate-limited"
-                worker_status["message"] = "AI Rate Limit hit. Waiting for cooldown..."
-                worker_status["error"] = "RateLimitExceeded"
-            else:
-                worker_status["state"] = "error"
-                worker_status["message"] = f"Ingestion failed: {err_msg[:50]}"
-                worker_status["error"] = err_msg
-            logger.error(f"Node creation failed during live ingest: {e}")
+            logger.error(f"Failed to generate nodes for {region}: {e}")
+            worker_status["state"] = "error"
+            worker_status["message"] = f"AI Extraction Failed: {str(e)}"
+            # Reset to idle after 10s to clear HUD error eventually
+            threading.Timer(10.0, lambda: worker_status.update({"state": "idle", "message": "System Ready"})).start()
     else:
+        logger.info(f"No new articles found for {region}. Intelligence cycle skipped.")
         worker_status["state"] = "idle"
-        worker_status["message"] = "No new articles found in this cycle."
+        worker_status["message"] = f"No new data for {region}."
 
-def start_background_worker(interval_seconds=60): 
+def start_background_worker(interval_seconds=300): 
+    """
+    Start the background intelligence worker.
+    Uses a threading approach for simplicity, but respects API rate limits.
+    """
     def worker():
+        logger.info(f"Worker thread started. Initial interval: {interval_seconds}s")
         # First wait slightly so the server spins up first
-        time.sleep(5)
+        time.sleep(10)
         cycles = 0
+        
         while True:
-            # 1. Fetch Global News
-            fetch_and_ingest(region="global")
-            time.sleep(10) # Small breather
-
-            # 2. Fetch India News
-            fetch_and_ingest(region="India")
-            
-            # Run consolidation every 60 cycles (e.g. 1 hour if interval is 60s)
-            cycles += 1
-            if cycles >= 60:
-                logger.info("Triggering scheduled graph consolidation...")
-                run_consolidation()
-                cycles = 0
+            try:
+                # 1. Fetch Global News
+                logger.info("Cycle start: Fetching global intelligence...")
+                fetch_and_ingest(region="global")
                 
-            logger.info(f"Worker sleeping for {interval_seconds}s...")
-            time.sleep(interval_seconds)
+                # Small staggered delay between regions to spread load
+                time.sleep(20) 
+
+                # 2. Fetch India News
+                logger.info("Cycle: Fetching regional (India) intelligence...")
+                fetch_and_ingest(region="India")
+                
+                # Run consolidation periodically (roughly every hour if interval is 300s)
+                cycles += 1
+                if cycles >= 12: 
+                    logger.info("Triggering scheduled graph consolidation...")
+                    run_consolidation()
+                    cycles = 0
+                
+                logger.info(f"Intelligence cycle complete. Worker sleeping for {interval_seconds}s.")
+                time.sleep(interval_seconds)
+                
+            except Exception as e:
+                logger.error(f"Worker loop encountered an error: {e}")
+                time.sleep(60) # Sleep for a minute before retrying on crash
             
-    t = threading.Thread(target=worker, daemon=True)
+    t = threading.Thread(target=worker, daemon=True, name="IntelligenceWorker")
     t.start()
     return t

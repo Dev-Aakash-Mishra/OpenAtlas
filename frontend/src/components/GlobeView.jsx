@@ -44,7 +44,7 @@ export default function GlobeView({ graphData, DOMAIN_COLORS }) {
   }, [graphData, DOMAIN_COLORS]);
 
   return (
-    <div style={{ width: '100%', height: '100%', background: '#0f172a', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+    <div style={{ width: '100%', height: '100%', background: '#0c0e12', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
       {pointsData.length > 0 ? (
         <Globe
           ref={globeEl}
@@ -62,9 +62,14 @@ export default function GlobeView({ graphData, DOMAIN_COLORS }) {
           pointLabel="label"
         />
       ) : (
-        <div style={{ color: 'white', textAlign: 'center' }}>
-          <h2>Globe View Pending</h2>
-          <p style={{ color: '#94a3b8' }}>Waiting for the active AI worker to ingest live news articles containing geographic coordinates.</p>
+        <div className="text-center p-12 glass-panel border border-white/10 rounded-2xl max-w-md">
+          <h2 className="text-[11px] font-label font-black text-primary uppercase tracking-[0.4em] mb-6">Globe Interface Offline</h2>
+          <p className="text-on-surface text-lg font-headline italic font-bold leading-relaxed mb-8">
+            Awaiting the ingestion of live geospatial intelligence nodes.
+          </p>
+          <div className="flex justify-center">
+             <div className="w-px h-12 bg-white/10 animate-pulse"></div>
+          </div>
         </div>
       )}
     </div>

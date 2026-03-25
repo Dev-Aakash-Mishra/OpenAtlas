@@ -7,6 +7,7 @@ export default function DetailPanel({
   onFollowThread, 
   onPredictBranch, 
   onMaterialize,
+  onEvolution,
   isProcessingThread,
   isPredicting,
   showToast
@@ -38,13 +39,13 @@ export default function DetailPanel({
   const [deepDive, setDeepDive] = useState(null);
   const [loadingDeepDive, setLoadingDeepDive] = useState(false);
 
-  const handleDeepDive = () => {
+  const handleDeepDiveInternal = () => {
     setLoadingDeepDive(true);
     fetch(`/api/deep_dive/${id}`)
       .then(res => res.json())
       .then(data => {
         if (data.status === 'success') {
-          setDeepDive(data.analysis);
+          node.onDeepDive(data.analysis);
         } else {
           showToast("Deep dive failed: " + data.message, 'error');
         }
@@ -54,192 +55,251 @@ export default function DetailPanel({
   };
 
   return (
-    <div className="absolute top-6 right-4 md:right-6 z-50 w-[calc(100%-2rem)] sm:w-80 bg-surface-container-high/90 backdrop-blur-2xl border border-outline-variant/15 rounded-2xl shadow-2xl p-5 md:p-6 animate-in slide-in-from-right-8 duration-300 max-h-[calc(100vh-120px)] overflow-y-auto scrollbar-thin scrollbar-thumb-outline-variant/30 scrollbar-track-transparent">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-[10px] font-headline font-bold text-primary bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wider">
-          {isGhost ? 'Expert Prediction' : 'Event Details'}
-        </span>
-        <button onClick={onClose} className="hover:text-primary transition-colors">
-          <span className="material-symbols-outlined text-on-surface-variant text-sm">close</span>
-        </button>
-      </div>
+    <div className="absolute top-6 right-4 md:right-6 z-50 w-[calc(100%-2rem)] sm:w-[380px] bg-[#0b0e14]/90 backdrop-blur-3xl border border-white/10 rounded-[2rem] shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] flex flex-col animate-in slide-in-from-right-12 duration-500 max-h-[calc(100vh-120px)] overflow-hidden">
+      
+      {/* Decorative Top Accent */}
+      <div 
+        className="h-1.5 w-full" 
+        style={{ background: `linear-gradient(90deg, ${domainColor} 0%, ${domainColor}55 100%)` }}
+      />
 
-      {/* Publisher Badge - prominent at top */}
-      {publisher && (
-        <div className="flex items-center gap-2 mb-3">
-          <span className="material-symbols-outlined text-[14px] text-on-surface-variant">newsmode</span>
-          <span className="text-[11px] font-bold text-on-surface uppercase tracking-wide">{publisher}</span>
-          {trust_score !== undefined && (
-            <span className={`ml-auto text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
-              bias_warning ? 'bg-orange-500/15 text-orange-400 border border-orange-500/30' :
-              trust_score >= 80 ? 'bg-green-500/10 text-green-400 border border-green-500/20' :
-              'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20'
-            }`}>
-              {bias_warning ? '⚠ Tone Warning' : `Fact-Checked ${trust_score}%`}
+      <div className="p-6 overflow-y-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-2">
+            <div 
+              className="w-2 h-2 rounded-full animate-pulse"
+              style={{ backgroundColor: domainColor }}
+            />
+            <span className="text-[10px] font-headline font-bold text-on-surface-variant uppercase tracking-[0.2em]">
+              {isGhost ? 'Expert Prediction' : 'Intelligence Report'}
             </span>
+          </div>
+          <button 
+            onClick={onClose} 
+            className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-white transition-all active:scale-90"
+          >
+            <span className="material-symbols-outlined text-lg">close</span>
+          </button>
+        </div>
+
+        {/* Publisher & Trust Section */}
+        <div className="flex items-start gap-4 mb-8">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="material-symbols-outlined text-sm text-primary">verified</span>
+              <span className="text-xs font-bold text-on-surface uppercase tracking-wide">{publisher || 'Global Network'}</span>
+            </div>
+            <div className="text-[10px] text-on-surface-variant/60 font-medium">
+              Report ID: <span className="font-mono text-[9px]">{id.substring(0, 8)}</span>
+            </div>
+          </div>
+          
+          {trust_score !== undefined && (
+            <div className="flex flex-col items-end gap-1.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-headline font-bold text-primary">{trust_score}%</span>
+                <div className="w-16 h-1 bg-white/10 rounded-full overflow-hidden">
+                  <div 
+                    className={`h-full transition-all duration-1000 ${bias_warning ? 'bg-orange-500' : 'bg-primary'}`}
+                    style={{ width: `${trust_score}%` }}
+                  />
+                </div>
+              </div>
+              <span className="text-[8px] font-bold uppercase tracking-widest text-on-surface-variant/50">
+                {bias_warning ? 'Bias Detected' : 'Reliability Index'}
+              </span>
+            </div>
           )}
         </div>
-      )}
 
-      <h2 className="text-xl font-headline font-bold mb-2 leading-tight">{content?.split('.')[0]}</h2>
-      <p className="text-xs text-on-surface-variant leading-relaxed mb-4">
-        {content}
-      </p>
-
-      {state && (
-        <div className="mb-4 flex flex-wrap gap-2">
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-secondary/10 border border-secondary/20 rounded-full text-[9px] font-bold text-secondary uppercase tracking-wider">
-            <span className="material-symbols-outlined text-[12px]">location_on</span>
-            {district ? `${district}, ${state}` : state}
-          </span>
-        </div>
-      )}
-
-      {local_relevance && (
-        <div className="mb-4 p-4 bg-secondary/5 border-l-2 border-secondary rounded-r-xl shadow-inner">
-           <h5 className="text-[9px] font-headline text-secondary uppercase tracking-widest mb-1 font-bold">Local Relevance (India)</h5>
-           <p className="text-[11px] font-medium text-on-surface leading-relaxed">
-             {local_relevance}
-           </p>
-        </div>
-      )}
-
-      {/* Mini-Map for geo-tagged events */}
-      {lat && lng && (
-        <div className="mb-4 rounded-xl overflow-hidden border border-outline-variant/20 shadow-inner">
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-surface-container-highest">
-            <span className="material-symbols-outlined text-[12px] text-on-surface-variant">location_on</span>
-            <span className="text-[9px] font-bold text-on-surface-variant uppercase tracking-widest">Event Location</span>
-            <span className="ml-auto text-[11px] text-on-surface-variant">{lat >= 0 ? `${lat?.toFixed(2)}°N` : `${Math.abs(lat)?.toFixed(2)}°S`}, {lng >= 0 ? `${lng?.toFixed(2)}°E` : `${Math.abs(lng)?.toFixed(2)}°W`}</span>
-          </div>
-          <iframe
-            title="Event Location"
-            src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng-2},${lat-2},${lng+2},${lat+2}&layer=mapnik&marker=${lat},${lng}`}
-            className="w-full h-32 border-0"
-            loading="lazy"
-          />
-        </div>
-      )}
-
-      {deepDive && (
-        <div className="mb-6 relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-primary/30 to-secondary/30 rounded-2xl blur opacity-75 group-hover:opacity-100 transition duration-1000 group-hover:duration-200 animate-pulse"></div>
-          <div className="relative p-5 bg-surface-container-highest/90 backdrop-blur-xl border border-primary/20 rounded-2xl shadow-xl overflow-hidden">
-             {/* Quantum Circuit Mesh Background */}
-             <div className="absolute inset-0 opacity-5 pointer-events-none">
-                <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                  <pattern id="mesh" width="20" height="20" patternUnits="userSpaceOnUse">
-                    <path d="M 20 0 L 0 0 0 20" fill="none" stroke="currentColor" strokeWidth="0.5"/>
-                  </pattern>
-                  <rect width="100%" height="100%" fill="url(#mesh)" />
-                </svg>
-             </div>
-
-             <div className="flex items-center gap-2 mb-3">
-                <span className="material-symbols-outlined text-primary text-sm animate-spin-slow">psychology</span>
-                <h5 className="text-[11px] font-headline text-primary uppercase tracking-[0.2em] font-bold">AI Deep Analysis</h5>
-             </div>
-             <p className="text-xs leading-relaxed text-[#ecedf6] font-medium italic relative z-10">"{deepDive}"</p>
-             
-             <div className="mt-4 flex justify-end">
-                <div className="h-0.5 w-12 bg-gradient-to-r from-transparent to-primary/40 rounded-full"></div>
-             </div>
+        {/* Content Section */}
+        <div className="space-y-4 mb-8">
+          <h2 className="text-2xl font-headline font-bold leading-[1.15] text-white tracking-tight">
+            {content?.split('.')[0]}
+          </h2>
+          <div className="relative">
+            <div className="absolute -left-4 top-0 bottom-0 w-1 rounded-full opacity-20" style={{ backgroundColor: domainColor }} />
+            <p className="text-[13px] text-on-surface-variant/90 leading-relaxed font-medium">
+              {content}
+            </p>
           </div>
         </div>
-      )}
 
-      <div className="space-y-6">
-        <div>
-          <h5 className="text-[10px] font-headline text-on-surface-variant uppercase tracking-widest mb-3">Key Elements</h5>
+        {/* Geo-Context Section */}
+        {(state || local_relevance) && (
+          <div className="mb-8 space-y-4">
+            {state && (
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-xl bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20">
+                  <span className="material-symbols-outlined text-lg">location_on</span>
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-secondary uppercase tracking-widest leading-none mb-1">Impact Zone</div>
+                  <div className="text-xs font-bold text-on-surface">{district ? `${district}, ${state}` : state}</div>
+                </div>
+              </div>
+            )}
+            
+            {local_relevance && (
+              <div className="p-4 bg-white/5 border border-white/5 rounded-2xl">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="material-symbols-outlined text-sm text-secondary">info</span>
+                  <span className="text-[10px] font-bold text-secondary uppercase tracking-widest">Local Context (India)</span>
+                </div>
+                <p className="text-[11px] font-medium text-on-surface-variant leading-relaxed italic">
+                  "{local_relevance}"
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mini-Map for geo-tagged events */}
+        {lat && lng && (
+          <div className="mb-8 group">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-[10px] font-bold text-on-surface-variant/50 uppercase tracking-widest">Geospatial Marker</span>
+              <span className="text-[10px] font-mono text-on-surface-variant/40">{lat.toFixed(3)}, {lng.toFixed(3)}</span>
+            </div>
+            <div className="relative h-32 rounded-2xl overflow-hidden border border-white/5 group-hover:border-primary/30 transition-colors">
+              <iframe
+                title="Event Location"
+                src={`https://www.openstreetmap.org/export/embed.html?bbox=${lng-0.5},${lat-0.5},${lng+0.5},${lat+0.5}&layer=mapnik&marker=${lat},${lng}`}
+                className="w-full h-full border-0 brightness-[0.7] contrast-[1.2] grayscale-[0.3]"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 pointer-events-none ring-1 ring-inset ring-white/10 rounded-2xl" />
+            </div>
+          </div>
+        )}
+
+        {/* Metadata Grid */}
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <div className="p-4 bg-white/5 border border-white/5 rounded-2xl group hover:border-primary/20 transition-all">
+            <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-[0.2em] block mb-2">Propagations</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-headline font-bold text-primary">{next?.length || 0}</span>
+              <span className="text-[10px] font-bold text-on-surface-variant/30 uppercase">Nodes</span>
+            </div>
+          </div>
+          <div className="p-4 bg-white/5 border border-white/5 rounded-2xl group hover:border-secondary/20 transition-all">
+            <span className="text-[9px] font-bold text-on-surface-variant/40 uppercase tracking-[0.2em] block mb-2">Ancestry</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-headline font-bold text-secondary">{prev?.length || 0}</span>
+              <span className="text-[10px] font-bold text-on-surface-variant/30 uppercase">Roots</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Keywords */}
+        <div className="mb-8">
           <div className="flex flex-wrap gap-2">
             {(key_elements || []).map((k) => (
-              <span key={k} className="text-[10px] px-2 py-1 bg-surface-container-highest rounded border border-outline-variant/10 text-on-surface/80">
-                {k}
+              <span key={k} className="px-3 py-1 bg-white/5 hover:bg-white/10 border border-white/5 rounded-lg text-[9px] font-bold text-on-surface-variant transition-colors cursor-default">
+                #{k.toUpperCase()}
               </span>
             ))}
           </div>
         </div>
 
-        <div>
-          <h5 className="text-[10px] font-headline text-on-surface-variant uppercase tracking-widest mb-3">System Context</h5>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="p-3 bg-surface-container-highest rounded-xl border border-outline-variant/5">
-              <span className="text-[8px] uppercase tracking-tighter text-on-surface-variant block mb-1">Outgoing</span>
-              <span className="text-lg font-headline font-bold text-primary">{next?.length || 0}</span>
-            </div>
-            <div className="p-3 bg-surface-container-highest rounded-xl border border-outline-variant/5">
-              <span className="text-[8px] uppercase tracking-tighter text-on-surface-variant block mb-1">Incoming</span>
-              <span className="text-lg font-headline font-bold text-secondary">{prev?.length || 0}</span>
-            </div>
+        {/* Action Buttons Section */}
+        <div className="space-y-6">
+          <div className="flex flex-col gap-3">
+            <span className="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-[0.2em] px-1">Strategic Operations</span>
+            
+            {isGhost ? (
+              <button 
+                className="w-full group relative overflow-hidden bg-primary/10 hover:bg-primary/20 text-primary border border-primary/30 py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 text-[11px] font-bold uppercase tracking-widest shadow-xl shadow-primary/5"
+                onClick={() => onMaterialize(node)}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                <span className="material-symbols-outlined text-base">auto_awesome</span>
+                <span>Materialize Prediction</span>
+              </button>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    className={`group relative overflow-hidden bg-white/5 hover:bg-white/10 text-on-surface border border-white/5 hover:border-primary/40 p-4 rounded-2xl transition-all duration-300 flex flex-col items-center justify-center gap-2 text-center ${isProcessingThread ? 'opacity-50 pointer-events-none' : ''}`}
+                    onClick={() => onFollowThread(id)}
+                    disabled={isProcessingThread}
+                  >
+                    <span className={`material-symbols-outlined text-xl text-primary/80 group-hover:text-primary transition-colors ${isProcessingThread ? 'animate-spin' : ''}`}>
+                      {isProcessingThread ? 'sync' : 'account_tree'}
+                    </span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest leading-none">Trace Thread</span>
+                  </button>
+                  
+                  <button 
+                    className="group relative overflow-hidden bg-white/5 hover:bg-white/10 text-on-surface border border-white/5 hover:border-secondary/40 p-4 rounded-2xl transition-all duration-300 flex flex-col items-center justify-center gap-2 text-center"
+                    onClick={() => onEvolution(id, (key_elements && key_elements[0]) || content?.split(' ')[0])}
+                  >
+                    <span className="material-symbols-outlined text-xl text-secondary/80 group-hover:text-secondary transition-colors">timeline</span>
+                    <span className="text-[9px] font-bold uppercase tracking-widest leading-none">Evolution Arc</span>
+                  </button>
+                </div>
+
+                <button 
+                  className={`w-full group relative overflow-hidden bg-white/5 hover:bg-white/10 text-on-surface border border-white/5 hover:border-white/20 py-4 rounded-2xl transition-all duration-300 flex items-center justify-center gap-3 text-[11px] font-bold uppercase tracking-widest ${isPredicting ? 'opacity-50 pointer-events-none' : ''}`}
+                  onClick={() => onPredictBranch(id)}
+                  disabled={isPredicting}
+                >
+                  <span className={`material-symbols-outlined text-base transition-colors ${isPredicting ? 'animate-spin text-primary' : 'text-on-surface-variant/70 group-hover:text-white'}`}>
+                    {isPredicting ? 'sync' : 'online_prediction'}
+                  </span>
+                  <span>{isPredicting ? 'Projecting...' : 'Project Consequences'}</span>
+                </button>
+              </>
+            )}
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <span className="text-[10px] font-bold text-on-surface-variant/30 uppercase tracking-[0.2em] px-1">Advanced Analysis</span>
+            <button 
+              className="w-full relative overflow-hidden py-4 text-[11px] text-primary bg-primary/5 hover:bg-primary/10 rounded-2xl border border-primary/20 hover:border-primary/40 transition-all font-bold tracking-widest uppercase flex items-center justify-center gap-3 shadow-lg shadow-primary/5 group"
+              onClick={handleDeepDiveInternal}
+              disabled={loadingDeepDive}
+            >
+              <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="material-symbols-outlined text-base">{loadingDeepDive ? 'hourglass_empty' : 'psychology_alt'}</span>
+              {loadingDeepDive ? 'Synthesizing...' : 'Run Neuro-Analysis'}
+            </button>
           </div>
         </div>
 
-        <div className="space-y-2">
-          {isGhost ? (
-            <button 
-              className="w-full bg-primary text-on-primary font-bold py-3 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 text-xs shadow-lg shadow-primary/20"
-              onClick={() => onMaterialize(node)}
-            >
-              <span className="material-symbols-outlined text-sm">auto_awesome</span>
-              Save to Feed
-            </button>
-          ) : (
-            <>
-              <button 
-                className={`w-full bg-primary text-on-primary font-bold py-3 rounded-xl hover:opacity-90 transition-all flex items-center justify-center gap-2 text-xs shadow-lg shadow-primary/20 ${isProcessingThread ? 'cursor-wait opacity-80' : ''}`}
-                onClick={() => onFollowThread(id)}
-                disabled={isProcessingThread}
-              >
-                <span className={`material-symbols-outlined text-sm ${isProcessingThread ? 'animate-spin' : ''}`}>
-                  {isProcessingThread ? 'progress_activity' : 'account_tree'}
-                </span>
-                {isProcessingThread ? 'Processing Thread...' : 'Follow Narrative Thread'}
-              </button>
-              <button 
-                className={`w-full bg-surface-container-highest border border-outline-variant/20 text-on-surface font-bold py-3 rounded-xl hover:bg-surface-variant transition-all flex items-center justify-center gap-2 text-xs ${isPredicting ? 'cursor-wait opacity-80' : ''}`}
-                onClick={() => onPredictBranch(id)}
-                disabled={isPredicting}
-              >
-                <span className={`material-symbols-outlined text-sm ${isPredicting ? 'animate-spin' : ''}`}>
-                  {isPredicting ? 'progress_activity' : 'online_prediction'}
-                </span>
-                {isPredicting ? 'Predicting...' : 'Predict Consequences'}
-              </button>
-            </>
-          )}
+        {/* Footer Meta */}
+        <div className="mt-8 pt-6 border-t border-white/5 flex items-center justify-between">
+          <div className="flex flex-col">
+            <span className="text-[8px] font-bold text-on-surface-variant/40 uppercase tracking-widest">Discovery Date</span>
+            <span className="text-[10px] text-on-surface-variant font-bold">{new Date(timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </div>
           
-          <button 
-            className="w-full py-2 text-[10px] text-primary hover:text-primary-dim transition-colors flex items-center justify-center gap-1 font-bold tracking-tight"
-            onClick={handleDeepDive}
-            disabled={loadingDeepDive}
-          >
-            <span className="material-symbols-outlined text-xs">{loadingDeepDive ? 'hourglass_empty' : 'psychology'}</span>
-            {loadingDeepDive ? 'Analyzing...' : 'AI Deep Analysis'}
-          </button>
+          <div className="flex items-center gap-2">
+            {source_url && (
+              <a 
+                href={source_url} 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 text-on-surface-variant hover:text-primary hover:bg-primary/10 transition-all"
+                title="View Intelligence Source"
+              >
+                <span className="material-symbols-outlined text-lg">open_in_new</span>
+              </a>
+            )}
+            <button 
+              className="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 text-on-surface-variant hover:text-green-500 hover:bg-green-500/10 transition-all"
+              onClick={() => {
+                const headline = content?.split('.')[0] || 'Intelligence Report';
+                const url = source_url || window.location.href;
+                const text = `🔹 ${headline}\n\nExplore this insight on OpenAtlas: ${url}`;
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+              }}
+              title="Share Intelligence"
+            >
+              <span className="material-symbols-outlined text-lg">share</span>
+            </button>
+          </div>
         </div>
-      </div>
-
-      <div className="mt-6 pt-4 border-t border-outline-variant/10 flex items-center justify-between">
-        <span className="text-[9px] text-on-surface-variant font-medium">{new Date(timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-        {source_url && (
-          <a href={source_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-[11px] text-primary hover:underline font-bold">
-            {publisher ? publisher : 'Source'}
-            <span className="material-symbols-outlined text-[12px]">open_in_new</span>
-          </a>
-        )}
-        {/* WhatsApp Share */}
-        <button 
-          className="p-1.5 rounded-lg hover:bg-green-500/10 text-on-surface-variant/50 hover:text-green-500 transition-colors"
-          onClick={() => {
-            const headline = content?.split('.')[0] || 'News';
-            const url = source_url || window.location.href;
-            const text = `${headline}\n\nRead more: ${url}\n\n— via OpenAtlas`;
-            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
-          }}
-          title="Share via WhatsApp"
-        >
-          <span className="material-symbols-outlined text-sm">share</span>
-        </button>
       </div>
     </div>
   );

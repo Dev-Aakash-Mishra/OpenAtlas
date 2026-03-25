@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import uuid
 import json
 
@@ -12,7 +12,7 @@ class Node(BaseModel):
     content: str
     key_elements: List[str] = []
     domain: str
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     speculation: bool = False
     confidence: Optional[float] = None
     trust_score: int = 50

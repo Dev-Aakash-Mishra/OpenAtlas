@@ -273,3 +273,39 @@ def deep_dive_node(node_id: str) -> dict:
     except Exception as e:
         logger.error(f"Deep dive failed: {e}")
         return {"status": "error", "message": str(e)}
+
+def get_narrative_evolution(query: str, limit: int = 30) -> list[dict]:
+    """Find nodes related to a topic and return them ordered by time."""
+    # 1. Semantic search to find the "core" of the narrative
+    query_vec = get_embedding(query)
+    if not query_vec:
+        # Fallback to keyword search
+        return search_nodes(query)
+
+    cypher = """
+    CALL db.index.vector.queryNodes('node_embeddings', $limit, $query_embedding)
+    YIELD node AS n, score
+    WHERE score > 0.6
+    RETURN n
+    ORDER BY n.timestamp ASC
+    """
+    
+    try:
+        results = neo4j_client.execute_query(cypher, {
+            "limit": limit,
+            "query_embedding": query_vec
+        })
+        
+        nodes = []
+        if results:
+            for record in results:
+                n_data = dict(record['n'])
+                if 'timestamp' in n_data:
+                    n_data['timestamp'] = str(n_data['timestamp'])
+                # Ensure sentiment exists
+                n_data['sentiment'] = n_data.get('sentiment', 0.0)
+                nodes.append(n_data)
+        return nodes
+    except Exception as e:
+        logger.error(f"Narrative Evolution query failed: {e}")
+        return []

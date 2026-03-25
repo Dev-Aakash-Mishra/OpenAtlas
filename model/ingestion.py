@@ -1,5 +1,5 @@
 import os
-import time  # ✅ FIX 6: moved to top of file
+import time
 import logging
 import networkx as nx
 from model.llm import chat_llm_json, chat_llm, get_embedding, get_embeddings_batch
@@ -14,7 +14,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-GRAPH_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "graph.json")
+GRAPH_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "data", "graph.json")
 
 SYSTEM_PROMPT = """You are a specialized News Analyst focusing on the Indian subcontinent and global affairs.
 You will receive raw news articles from various sources.
@@ -47,33 +47,26 @@ RULES:
 - ALL summaries must be in English.
 - Return ONLY valid JSON."""
 
-
 def get_tokens(text: str) -> set[str]:
     tokens = "".join(c if c.isalnum() or c.isspace() else " " for c in text.lower()).split()
     return {t for t in tokens if len(t) > 2}
-
 
 def is_article_duplicate(article_url: str, article_text: str, article_title: str, existing_nodes: list[Node], region: str = "global") -> bool:
     if not existing_nodes:
         return False
 
-    # Filter existing nodes to ONLY check for duplicates in the SAME region
-    # This allows similar stories to exist in different regional views if desired
     regional_nodes = [n for n in existing_nodes if n.region == region]
     if not regional_nodes:
         return False
 
-    # 1. Quick URL Check
     if article_url:
         for ex in regional_nodes:
             if ex.source_url == article_url:
                 return True
 
-    # ✅ FIX 5: Compare title tokens against existing node title/first-sentence
     art_tokens = get_tokens(article_title)
     max_sim = 0
     for ex in regional_nodes:
-        # Use the first sentence of content as a proxy for the headline
         ex_headline = ex.content.split(".")[0] if ex.content else ""
         ex_tokens = get_tokens(ex_headline)
         if not art_tokens or not ex_tokens:
@@ -88,9 +81,7 @@ def is_article_duplicate(article_url: str, article_text: str, article_title: str
 
     return False
 
-
 def cluster_articles(articles: list[dict]) -> list[dict]:
-    """Strengthened deduplication within the current batch based on fuzzy title similarity."""
     if not articles:
         return []
 
@@ -116,7 +107,6 @@ def cluster_articles(articles: list[dict]) -> list[dict]:
             unique_articles.append(art)
 
     return unique_articles
-
 
 def _parse_cache_file(cache_path: str) -> list[dict]:
     with open(cache_path, "r", encoding="utf-8") as f:
@@ -166,9 +156,7 @@ def _parse_cache_file(cache_path: str) -> list[dict]:
 
     return articles
 
-
 def _batch_save_to_neo4j(nodes: list[Node]) -> None:
-    """✅ FIX 9: Batch write all nodes in a single Neo4j round-trip using UNWIND."""
     if not nodes:
         return
 
@@ -200,14 +188,12 @@ def _batch_save_to_neo4j(nodes: list[Node]) -> None:
     neo4j_client.execute_query(query, {"records": records})
     logger.info("✅ Batch saved %d nodes to Neo4j.", len(nodes))
 
-
 def create_nodes(cache_path: str, region: str = "global") -> list[Node]:
     os.makedirs(os.path.dirname(GRAPH_PATH), exist_ok=True)
 
     articles = _parse_cache_file(cache_path)
     logger.info("Parsed %d articles from %s", len(articles), cache_path)
 
-    # 1. Batch-internal deduplication
     articles = cluster_articles(articles)
     logger.info("After internal clustering: %d articles", len(articles))
 
@@ -232,7 +218,6 @@ def create_nodes(cache_path: str, region: str = "global") -> list[Node]:
 
     all_new_nodes: list[Node] = []
 
-    # Process in chunks to avoid LLM output token limits
     chunk_size = 10
     for i in range(0, len(valid_articles), chunk_size):
         chunk = valid_articles[i:i + chunk_size]
@@ -278,17 +263,16 @@ def create_nodes(cache_path: str, region: str = "global") -> list[Node]:
                     publisher=item.get("publisher"),
                 ))
 
-            time.sleep(2)  # ✅ FIX 6: import already at top
+            time.sleep(2)
 
         except Exception as e:
             logger.error(f"❌ LLM chunk extraction failed: {e}")
             continue
 
     if not all_new_nodes:
-        logger.warning("No new nodes extracted from LLM chunks.")
+        logger.warning("⚠️ No new nodes extracted from LLM chunks. (LLM might have failed or returned empty JSON)")
         return existing_nodes
 
-    # ✅ FIX 3: Deduplicate BEFORE generating embeddings and saving to Neo4j
     logger.info("Deduplicating %d LLM-extracted nodes before saving...", len(all_new_nodes))
     unique_new_nodes: list[Node] = []
     for new_n in all_new_nodes:
@@ -323,11 +307,9 @@ def create_nodes(cache_path: str, region: str = "global") -> list[Node]:
         logger.warning("All extracted nodes were duplicates of existing ones.")
         return existing_nodes
 
-    # 4. Batch generate embeddings for unique new nodes only
     logger.info("Generating batch embeddings for %d unique new nodes...", len(unique_new_nodes))
     contents = [n.content for n in unique_new_nodes]
 
-    # ✅ FIX 13: Safe embedding with per-item fallback if batch partially fails
     try:
         embeddings = get_embeddings_batch(contents)
         if len(embeddings) != len(unique_new_nodes):
@@ -345,28 +327,21 @@ def create_nodes(cache_path: str, region: str = "global") -> list[Node]:
     for n, emb in zip(unique_new_nodes, embeddings):
         n.embedding = emb
 
-    # ✅ FIX 9: Single batched Neo4j write instead of N round-trips
     _batch_save_to_neo4j(unique_new_nodes)
 
-    # ✅ FIX 8: Small delay to let Neo4j index the new vectors before vector search
     logger.info("Waiting for Neo4j vector index to settle...")
     time.sleep(3)
 
-    # ✅ FIX 10: Only link NEW nodes — no need to re-link all existing nodes
     _link_new_nodes(unique_new_nodes)
-
-    # ✅ FIX 2: Removed undefined _link_nodes() call that would have caused NameError
 
     all_nodes = existing_nodes + unique_new_nodes
     save_nodes(all_nodes, GRAPH_PATH)
-    logger.info("Saved %d total nodes (%d new) to %s",
+    logger.info("📡 SUCCESS: Intelligence cycle complete. Saved %d total nodes (%d NEW nodes integrated) to %s",
                 len(all_nodes), len(unique_new_nodes), GRAPH_PATH)
 
     return all_nodes
 
-
 def _link_new_nodes(new_nodes: list[Node]) -> None:
-    """For each new node, find its top-K similar neighbors in Neo4j and connect them."""
     if not new_nodes:
         return
 
@@ -375,7 +350,6 @@ def _link_new_nodes(new_nodes: list[Node]) -> None:
         if not node.embedding:
             continue
 
-        # Increased threshold from 0.75 to 0.82 and added keyword check hint
         search_query = """
         CALL db.index.vector.queryNodes('node_embeddings', 10, $vector)
         YIELD node, score
@@ -397,7 +371,6 @@ def _link_new_nodes(new_nodes: list[Node]) -> None:
             if not results:
                 continue
 
-            # ✅ Batch all MERGE link queries for this node in one call
             neighbor_ids = [r['neighbor_id'] for r in results]
             link_query = """
             UNWIND $neighbor_ids AS neighbor_id
@@ -415,7 +388,6 @@ def _link_new_nodes(new_nodes: list[Node]) -> None:
 
     logger.info("✅ Finished semantic linking sweep.")
 
-
 def retrieve_graph(graph_path: str = GRAPH_PATH) -> nx.DiGraph:
     nodes = load_nodes(graph_path)
     G = nx.DiGraph()
@@ -429,29 +401,3 @@ def retrieve_graph(graph_path: str = GRAPH_PATH) -> nx.DiGraph:
 
     logger.info("Graph loaded: %d nodes, %d edges", G.number_of_nodes(), G.number_of_edges())
     return G
-
-
-if __name__ == "__main__":
-    import glob
-
-    cache_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "model", ".cache")
-    cache_files = sorted(glob.glob(os.path.join(cache_dir, "*.txt")))
-
-    if not cache_files:
-        logger.error("No cache files found in %s", cache_dir)
-    else:
-        latest = cache_files[-1]
-        logger.info("Using cache: %s", latest)
-
-        nodes = create_nodes(latest)
-        print(f"\n{'='*60}")
-        print(f"Created {len(nodes)} nodes")
-        print(f"{'='*60}")
-
-        for n in nodes[:5]:
-            print(f"\n[{n.domain}] {n.content[:100]}...")
-            print(f"  keys: {n.key_elements}")
-            print(f"  links: {len(n.next)} outgoing, {len(n.prev)} incoming")
-
-        G = retrieve_graph()
-        print(f"\nGraph: {G.number_of_nodes()} nodes, {G.number_of_edges()} edges")

@@ -14,7 +14,7 @@ root_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 if root_path not in sys.path:
     sys.path.insert(0, root_path)
 
-from model.query import query_graph, get_node_by_id, search_nodes, find_narrative_thread, predict_speculative_branches, materialize_ghost_node, deep_dive_node
+from model.query import query_graph, get_node_by_id, search_nodes, find_narrative_thread, predict_speculative_branches, materialize_ghost_node, deep_dive_node, get_narrative_evolution
 from model.build_graph import Node
 from model.neo4j_client import neo4j_client
 from scheduler import start_background_worker, fetch_and_ingest, worker_status
@@ -59,13 +59,9 @@ def get_system_status():
 @app.post("/api/deploy")
 async def deploy_query(background_tasks: BackgroundTasks, region: str = "global"):
     """Manually trigger a fresh news ingestion cycle."""
-    logger.info(f"Manual deployment triggered via API (POST) for region: {region}.")
+    logger.info(f"Manual intelligence refresh triggered via API for region: {region}.")
     background_tasks.add_task(fetch_and_ingest, region)
-    return {"message": f"Deployment initiated for {region}", "status": "processing"}
-
-@app.get("/api/deploy")
-def deploy_diag():
-    return {"status": "available", "method": "GET"}
+    return {"message": f"Intelligence refresh initiated for {region}", "status": "processing"}
 
 # --- BUSINESS LOGIC ROUTES ---
 
@@ -147,6 +143,12 @@ def post_materialize(req: MaterializeRequest) -> dict:
 def get_deep_dive(node_id: str) -> dict:
     return deep_dive_node(node_id)
 
+@app.get("/api/narrative_evolution")
+def get_evolution(q: str = "", limit: int = 30) -> list[dict]:
+    if not q.strip():
+        return []
+    return get_narrative_evolution(q, limit)
+
 @app.get("/api/graph")
 def get_graph(
     region: str = "global", 
@@ -160,9 +162,12 @@ def get_graph(
     
     cypher = """
     MATCH (n:Event)
-    WHERE ((n.region = $region) OR ($region = 'global' AND n.region IS NULL))
-      AND ($start_date IS NULL OR n.timestamp >= datetime($start_date))
-      AND ($end_date IS NULL OR n.timestamp <= datetime($end_date))
+    WHERE (
+        ($region = 'global' AND (n.region = 'global' OR n.region IS NULL)) 
+        OR (n.region = $region)
+    )
+      AND ($start_date IS NULL OR n.timestamp >= datetime($start_date) OR toString(n.timestamp) >= $start_date)
+      AND ($end_date IS NULL OR n.timestamp <= datetime($end_date) OR toString(n.timestamp) <= $end_date)
     OPTIONAL MATCH (n)-[r:CONNECTED_TO]->(m:Event)
     WITH n, collect(m.id) as next_ids
     ORDER BY n.timestamp DESC
@@ -218,12 +223,5 @@ else:
 
 if __name__ == "__main__":
     import uvicorn
-    import traceback
-    try:
-        # 0.0.0.0 enables access from local network if needed
-        uvicorn.run(app, host="0.0.0.0", port=8000)
-    except Exception as e:
-        with open("startup_error.log", "w") as f:
-            f.write(traceback.format_exc())
-            f.write(f"\nError: {e}")
-        sys.exit(1)
+    # 0.0.0.0 enables access from local network if needed
+    uvicorn.run(app, host="0.0.0.0", port=8000)

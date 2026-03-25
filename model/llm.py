@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 # ── Gemini (primary) ─────────────────────────────────────────────────────────
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
-MODEL  = "gemini-2.5-flash"
+MODEL  = "gemini-2.0-flash"
 
 # ── OpenRouter (fallback) ─────────────────────────────────────────────────────
 _or_key = os.getenv("OPENROUTER_API_KEY", "")
@@ -28,33 +28,46 @@ OR_EMBED_MODEL = "openai/text-embedding-3-small"
 MAX_RETRIES = 5
 
 # ── Circuit breaker state ─────────────────────────────────────────────────────
-# Once Gemini is confirmed rate-limited, we skip it entirely until the cooldown
-# expires — so subsequent chunks don't waste 8+ minutes retrying a dead endpoint.
 _GEMINI_COOLDOWN_SECS = 60 * 10  # try Gemini again after 10 minutes
-_gemini_chat_blocked_until: float = 0.0   # epoch seconds
-_gemini_embed_blocked_until: float = 0.0
+_STATE_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".circuit_state.json")
 
+def _load_state():
+    if not os.path.exists(_STATE_FILE):
+        return {"chat_blocked_until": 0.0, "embed_blocked_until": 0.0}
+    try:
+        with open(_STATE_FILE, "r") as f:
+            return json.load(f)
+    except Exception:
+        return {"chat_blocked_until": 0.0, "embed_blocked_until": 0.0}
+
+def _save_state(state):
+    try:
+        with open(_STATE_FILE, "w") as f:
+            json.dump(state, f)
+    except Exception as e:
+        logger.error("Failed to save circuit state: %s", e)
 
 def _gemini_chat_available() -> bool:
-    return time.time() >= _gemini_chat_blocked_until
-
+    state = _load_state()
+    return time.time() >= state.get("chat_blocked_until", 0.0)
 
 def _gemini_embed_available() -> bool:
-    return time.time() >= _gemini_embed_blocked_until
-
+    state = _load_state()
+    return time.time() >= state.get("embed_blocked_until", 0.0)
 
 def _block_gemini_chat() -> None:
-    global _gemini_chat_blocked_until
-    _gemini_chat_blocked_until = time.time() + _GEMINI_COOLDOWN_SECS
+    state = _load_state()
+    state["chat_blocked_until"] = time.time() + _GEMINI_COOLDOWN_SECS
+    _save_state(state)
     logger.warning(
         "🔴 Gemini chat circuit open — skipping for %d minutes.",
         _GEMINI_COOLDOWN_SECS // 60,
     )
 
-
 def _block_gemini_embed() -> None:
-    global _gemini_embed_blocked_until
-    _gemini_embed_blocked_until = time.time() + _GEMINI_COOLDOWN_SECS
+    state = _load_state()
+    state["embed_blocked_until"] = time.time() + _GEMINI_COOLDOWN_SECS
+    _save_state(state)
     logger.warning(
         "🔴 Gemini embed circuit open — skipping for %d minutes.",
         _GEMINI_COOLDOWN_SECS // 60,
@@ -149,13 +162,19 @@ def chat_llm_json(query: str, system_prompt: str = None) -> list | dict:
     raw = chat_llm(query, system_prompt)
     if not raw:
         return []
-    raw = raw.strip()
-    if raw.startswith("```json"):
-        raw = raw[7:]
-    if raw.startswith("```"):
-        raw = raw[3:]
-    if raw.endswith("```"):
-        raw = raw[:-3]
+    
+    # Improved regex to find JSON blocks (list or dict)
+    import re
+    match = re.search(r'(\[[\s\S]*\]|\{[\s\S]*\})', raw)
+    if match:
+        json_str = match.group(0)
+        try:
+            return json.loads(json_str)
+        except Exception as e:
+            logger.error("JSON parse failed: %s", e)
+            return []
+    
+    # Fallback to simple load if no regex match
     try:
         return json.loads(raw.strip())
     except Exception:
@@ -194,7 +213,7 @@ def get_embeddings_batch(texts: list[str]) -> list[list[float]]:
                     time.sleep(wait)
             else:
                 logger.error("Gemini batch embedding failed: %s", e)
-                return [[] for _ in texts]
+                return [[0.0] * 768 for _ in texts]
 
     # ── All retries exhausted → open circuit, fall back ──────────────────────
     _block_gemini_embed()

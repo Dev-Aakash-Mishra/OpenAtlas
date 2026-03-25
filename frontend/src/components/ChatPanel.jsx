@@ -108,7 +108,7 @@ export default function ChatPanel({ onNodeSelect, onClose, fontSize }) {
       <div className="flex items-center justify-between p-4 border-b border-outline-variant/10 bg-surface-container/30">
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>hub</span>
-          <span className="text-sm font-headline font-bold uppercase tracking-widest text-on-surface">Atlas Intelligence</span>
+          <span className="text-sm font-headline font-bold uppercase tracking-widest text-on-surface">Atlas Feeds Chat</span>
         </div>
         <div className="flex items-center gap-2">
           <button 

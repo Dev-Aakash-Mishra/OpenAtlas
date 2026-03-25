@@ -58,14 +58,14 @@ export default function PhenomenonHeatmap({ active }) {
             <feGaussianBlur in="SourceGraphic" stdDeviation="60" />
           </filter>
           <radialGradient id="tension-gradient">
-            <stop offset="0%" stopColor="rgba(239, 68, 68, 0.4)" />
-            <stop offset="60%" stopColor="rgba(239, 68, 68, 0.1)" />
-            <stop offset="100%" stopColor="rgba(239, 68, 68, 0)" />
+            <stop offset="0%" stopColor="rgba(251, 113, 133, 0.4)" />
+            <stop offset="60%" stopColor="rgba(251, 113, 133, 0.1)" />
+            <stop offset="100%" stopColor="rgba(251, 113, 133, 0)" />
           </radialGradient>
           <radialGradient id="neutral-gradient">
-            <stop offset="0%" stopColor="rgba(139, 92, 246, 0.3)" />
-            <stop offset="60%" stopColor="rgba(139, 92, 246, 0.08)" />
-            <stop offset="100%" stopColor="rgba(139, 92, 246, 0)" />
+            <stop offset="0%" stopColor="rgba(98, 250, 227, 0.3)" />
+            <stop offset="60%" stopColor="rgba(98, 250, 227, 0.08)" />
+            <stop offset="100%" stopColor="rgba(98, 250, 227, 0)" />
           </radialGradient>
         </defs>
 
